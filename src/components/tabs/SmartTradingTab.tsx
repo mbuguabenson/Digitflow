@@ -21,12 +21,14 @@ type Props = {
   digits: number[]; currentDigit: number; currentQuote: number; symbol: string;
   account: Account | null;
   placeTrade: (p: TradeParams) => Promise<TradeResult>;
+  watchContract?: (contractId: string, onUpdate: (data: Record<string, unknown>) => void) => () => void;
+  refreshBalance?: () => Promise<void>;
   isDark: boolean; onLoginRequest: () => void;
 };
 
 type AutoState = {
   running: boolean; currentStake: number; wins: number; losses: number;
-  log: { time: string; result: 'placed' | 'error' }[];
+  log: { time: string; result: 'placed' | 'won' | 'lost' | 'error'; profit?: number; error?: string }[];
 };
 
 const INIT_AUTO: AutoState = { running: false, currentStake: 0, wins: 0, losses: 0, log: [] };
@@ -99,22 +101,18 @@ function SmallSelect({ value, onChange, options, className }: {
   );
 }
 
-// ─── Inline Condition Builder (image-matching style) ─────────────────────────
+// ─── Inline Condition Builder ─────────────────────────────────────────
 type InlineCondProps = {
-  // primary prob condition
   probField: string; probFieldOptions: { value: string; label: string }[];
   onProbFieldChange: (v: string) => void;
   comparator: string; onComparatorChange: (v: string) => void;
   probValue: number; onProbValueChange: (v: number) => void;
-  // "for digit" (matches/differs only)
   showForDigit?: boolean; forDigit?: number; onForDigitChange?: (v: number) => void;
-  // secondary "last N ticks" condition
   showLastN: boolean; lastNEnabled: boolean; onLastNToggle: (v: boolean) => void;
   lastN: number; onLastNChange: (v: number) => void;
   lastNType: string; lastNTypeOptions: { value: string; label: string }[];
   onLastNTypeChange: (v: string) => void;
   lastNExtra?: React.ReactNode;
-  // action
   action: string;
   onActionChange: (v: string) => void;
   actionOptions: { value: string; label: string }[];
@@ -136,7 +134,6 @@ function InlineConditionBuilder({
   return (
     <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-2">
       <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Trading Condition</p>
-      {/* Primary condition row */}
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="text-xs font-semibold text-gray-500">if</span>
         <SmallSelect value={probField} onChange={onProbFieldChange} options={probFieldOptions} />
@@ -150,7 +147,6 @@ function InlineConditionBuilder({
         <SmallInput value={probValue} onChange={onProbValueChange} min={0} step={1} className="w-14 text-center" />
         <span className="text-xs text-gray-500">%</span>
       </div>
-      {/* Secondary last-N condition */}
       {showLastN && (
         <div className="flex flex-wrap items-center gap-1.5">
           <button
@@ -169,7 +165,6 @@ function InlineConditionBuilder({
           {lastNExtra}
         </div>
       )}
-      {/* Then action */}
       <div className="flex items-center gap-2 pt-1 border-t border-gray-200">
         <span className="rounded bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">Then</span>
         <SmallSelect value={action} onChange={onActionChange} options={actionOptions} className="flex-1" />
@@ -196,21 +191,50 @@ function TradeCard({ title, statusDot, children, isDark }: {
   );
 }
 
-function AutoButton({ running, loading, onClick }: { running: boolean; loading: boolean; onClick: () => void }) {
+function ActionButtons({
+  running, loading, placingManual, onToggleAuto, onManualTrade, isLoggedIn, onLoginRequest
+}: {
+  running: boolean; loading: boolean; placingManual: boolean;
+  onToggleAuto: () => void; onManualTrade: () => void;
+  isLoggedIn: boolean; onLoginRequest: () => void;
+}) {
+  if (!isLoggedIn) {
+    return (
+      <button
+        onClick={onLoginRequest}
+        className="w-full rounded-xl bg-blue-500 hover:bg-blue-600 py-2.5 text-xs font-bold text-white shadow transition-all mt-auto"
+      >
+        Connect Deriv Account
+      </button>
+    );
+  }
+
   return (
-    <button
-      onClick={onClick} disabled={loading}
-      className={cn(
-        'mt-auto w-full rounded-xl border py-2.5 text-sm font-bold flex items-center justify-center gap-2 transition-all',
-        running
-          ? 'bg-red-500 border-red-400 text-white hover:bg-red-600'
-          : 'bg-white border-red-400 text-red-500 hover:bg-red-50',
-      )}
-    >
-      {loading ? <Loader2 className="h-4 w-4 animate-spin" />
-        : running ? <><Square className="h-3.5 w-3.5" /> Stop Auto Trading</>
-        : <><Play className="h-3.5 w-3.5" /> Start Auto Trading</>}
-    </button>
+    <div className="flex gap-2 mt-auto pt-2">
+      <button
+        onClick={onManualTrade}
+        disabled={loading || placingManual}
+        className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2.5 text-xs font-bold flex items-center justify-center gap-1.5 shadow transition-all disabled:opacity-50"
+      >
+        {placingManual ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5 fill-current" />}
+        Trade Now
+      </button>
+
+      <button
+        onClick={onToggleAuto}
+        disabled={loading || placingManual}
+        className={cn(
+          'flex-1 rounded-xl border py-2.5 text-xs font-bold flex items-center justify-center gap-1.5 transition-all',
+          running
+            ? 'bg-red-500 border-red-400 text-white hover:bg-red-600'
+            : 'bg-white dark:bg-white/10 border-gray-300 dark:border-white/20 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/15'
+        )}
+      >
+        {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          : running ? <><Square className="h-3 w-3 fill-current" /> Stop Auto</>
+          : <><RefreshCw className="h-3 w-3" /> Auto Trade</>}
+      </button>
+    </div>
   );
 }
 
@@ -248,7 +272,9 @@ function useAutoTrade(
   targetDigit: number,
   symbol: string,
   placeTrade: (p: TradeParams) => Promise<TradeResult>,
-  onStop: () => void,
+  watchContract?: (contractId: string, onUpdate: (data: Record<string, unknown>) => void) => () => void,
+  refreshBalance?: () => Promise<void>,
+  onStop?: () => void,
 ) {
   const [placing, setPlacing] = useState(false);
   const [currentStake, setCurrentStake] = useState(stake);
@@ -278,25 +304,83 @@ function useAutoTrade(
           ? String(targetDigit) : String(barrier);
       }
       const result = await placeTrade(params);
-      setLog(prev => [...prev.slice(-19), { time: fmtTime(), result: result.success ? 'placed' : 'error' }]);
       if (!result.success) {
-        stakeRef.current = parseFloat((stakeRef.current * martingale).toFixed(2));
-        setCurrentStake(stakeRef.current);
-      } else {
-        stakeRef.current = stake;
-        setCurrentStake(stake);
+        setLog(prev => [...prev.slice(-19), { time: fmtTime(), result: 'error', error: result.error }]);
+        setPlacing(false);
+        return;
       }
-      setPlacing(false);
+
+      setLog(prev => [...prev.slice(-19), { time: fmtTime(), result: 'placed' }]);
+
+      if (result.contractId && watchContract) {
+        const unwatch = watchContract(result.contractId, (data) => {
+          const poc = (data as any).proposal_open_contract;
+          if (poc && (poc.is_sold === 1 || poc.status === 'won' || poc.status === 'lost')) {
+            unwatch();
+            const profit = Number(poc.profit || 0);
+            const isWin = poc.status === 'won' || profit > 0;
+            if (isWin) {
+              stakeRef.current = stake;
+              setCurrentStake(stake);
+              setLog(prev => [...prev.slice(-19), { time: fmtTime(), result: 'won', profit }]);
+            } else {
+              stakeRef.current = parseFloat((stakeRef.current * martingale).toFixed(2));
+              setCurrentStake(stakeRef.current);
+              setLog(prev => [...prev.slice(-19), { time: fmtTime(), result: 'lost', profit }]);
+            }
+            refreshBalance?.();
+            setPlacing(false);
+          }
+        });
+      } else {
+        setPlacing(false);
+      }
     };
     go();
-  }, [digits, running, placing, conditionsMet, action, barrier, targetDigit, symbol, ticks, martingale, stake, placeTrade]);
+  }, [digits, running, placing, conditionsMet, action, barrier, targetDigit, symbol, ticks, martingale, stake, placeTrade, watchContract, refreshBalance]);
+
+  const executeManualTrade = async () => {
+    setPlacing(true);
+    const info = ACTION_TO_CONTRACT[action];
+    const params: TradeParams = {
+      symbol, contractType: info.contractType,
+      amount: stakeRef.current, duration: ticks, durationUnit: 't', basis: 'stake',
+    };
+    if (info.needsBarrier) {
+      params.barrier = (action === 'BUY_MATCH' || action === 'BUY_DIFFER')
+        ? String(targetDigit) : String(barrier);
+    }
+    const result = await placeTrade(params);
+    if (!result.success) {
+      setLog(prev => [...prev.slice(-19), { time: fmtTime(), result: 'error', error: result.error }]);
+      setPlacing(false);
+      return;
+    }
+    setLog(prev => [...prev.slice(-19), { time: fmtTime(), result: 'placed' }]);
+    if (result.contractId && watchContract) {
+      const unwatch = watchContract(result.contractId, (data) => {
+        const poc = (data as any).proposal_open_contract;
+        if (poc && (poc.is_sold === 1 || poc.status === 'won' || poc.status === 'lost')) {
+          unwatch();
+          const profit = Number(poc.profit || 0);
+          const isWin = poc.status === 'won' || profit > 0;
+          setLog(prev => [...prev.slice(-19), { time: fmtTime(), result: isWin ? 'won' : 'lost', profit }]);
+          refreshBalance?.();
+          setPlacing(false);
+        }
+      });
+    } else {
+      setPlacing(false);
+    }
+  };
 
   const reset = () => { setLog([]); setCurrentStake(stake); stakeRef.current = stake; };
-  return { placing, currentStake, log, reset };
+  return { placing, currentStake, log, reset, executeManualTrade };
 }
 
+
 // ─── 1. Rise / Fall Card ─────────────────────────────────────────────────────
-function RiseFallCard({ digits, symbol, account, placeTrade, isDark, onLoginRequest }: Omit<Props, 'currentDigit' | 'currentQuote'>) {
+function RiseFallCard({ digits, symbol, account, placeTrade, watchContract, refreshBalance, isDark, onLoginRequest }: Omit<Props, 'currentDigit' | 'currentQuote'>) {
   const rf = useMemo(() => computeRiseFall(digits), [digits]);
   const [probField, setProbField] = useState('riseProb');
   const [comparator, setComparator] = useState('>');
@@ -318,20 +402,18 @@ function RiseFallCard({ digits, symbol, account, placeTrade, isDark, onLoginRequ
   }, [probField, comparator, probValue, lastNEnabled, lastN, lastNType]);
 
   const conditionsMet = useMemo(() => evaluateAllRules(rules, { digits, barrier: 5, targetDigit: 5 }), [rules, digits]);
-  const { placing, log } = useAutoTrade(running, digits, conditionsMet, stake, martingale, ticks, action, 5, 5, symbol, placeTrade, () => setRunning(false));
+  const { placing, log, executeManualTrade } = useAutoTrade(running, digits, conditionsMet, stake, martingale, ticks, action, 5, 5, symbol, placeTrade, watchContract, refreshBalance, () => setRunning(false));
 
   const recommend = rf.risePercent >= rf.fallPercent ? 'RISE' : 'FALL';
   const recommendPct = Math.max(rf.risePercent, rf.fallPercent);
 
   return (
     <TradeCard title="Rise/Fall" statusDot={running ? 'green' : 'gray'} isDark={isDark}>
-      {/* Recommendation */}
       <div className="flex items-center gap-2 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2">
         <span className="text-xs text-gray-500">Recommendation</span>
         <span className={cn('rounded px-2 py-0.5 text-xs font-black text-white', recommend === 'RISE' ? 'bg-green-500' : 'bg-red-500')}>{recommend}</span>
         <span className="ml-auto text-xs font-bold text-blue-600">{recommendPct.toFixed(2)}%</span>
       </div>
-      {/* Bars */}
       <div className="space-y-1.5">
         <div className="flex items-center gap-2">
           <span className="w-8 text-xs font-semibold text-green-600">Rise</span>
@@ -344,7 +426,6 @@ function RiseFallCard({ digits, symbol, account, placeTrade, isDark, onLoginRequ
           <span className="w-14 text-right text-xs font-bold text-red-500 tabular-nums">{rf.fallPercent.toFixed(2)}%</span>
         </div>
       </div>
-      {/* Condition */}
       <InlineConditionBuilder
         probField={probField} probFieldOptions={[{ value: 'riseProb', label: 'Rise Prob' }, { value: 'fallProb', label: 'Fall Prob' }]}
         onProbFieldChange={setProbField}
@@ -359,19 +440,31 @@ function RiseFallCard({ digits, symbol, account, placeTrade, isDark, onLoginRequ
       />
       <StakeRow stake={stake} onStake={setStake} ticks={ticks} onTicks={setTicks} martingale={martingale} onMartingale={setMartingale} />
       {log.length > 0 && (
-        <div className="flex gap-2 text-[10px]">
-          <span className="text-green-600 font-bold">Placed: {log.filter(l => l.result === 'placed').length}</span>
-          <span className="text-red-500 font-bold">Errors: {log.filter(l => l.result === 'error').length}</span>
+        <div className="flex flex-wrap gap-2 text-[10px] items-center">
+          <span className="text-blue-600 font-bold">Placed: {log.filter(l => l.result === 'placed').length}</span>
+          <span className="text-green-600 font-bold">Wins: {log.filter(l => l.result === 'won').length}</span>
+          <span className="text-red-500 font-bold">Losses: {log.filter(l => l.result === 'lost').length}</span>
+          {log.filter(l => l.result === 'error').length > 0 && (
+            <span className="text-red-600 font-bold">Errors: {log.filter(l => l.result === 'error').length}</span>
+          )}
           <span className="ml-auto text-gray-400">{log[log.length - 1]?.time}</span>
         </div>
       )}
-      <AutoButton running={running} loading={placing} onClick={() => { if (!account) { onLoginRequest(); return; } setRunning(r => !r); }} />
+      <ActionButtons
+        running={running}
+        loading={placing}
+        placingManual={placing}
+        onToggleAuto={() => { if (!account) { onLoginRequest(); return; } setRunning(r => !r); }}
+        onManualTrade={() => { if (!account) { onLoginRequest(); return; } executeManualTrade(); }}
+        isLoggedIn={!!account}
+        onLoginRequest={onLoginRequest}
+      />
     </TradeCard>
   );
 }
 
 // ─── 2. Even / Odd Stats Card ─────────────────────────────────────────────────
-function EvenOddStatsCard({ digits, symbol, account, placeTrade, isDark, onLoginRequest }: Omit<Props, 'currentDigit' | 'currentQuote'>) {
+function EvenOddStatsCard({ digits, symbol, account, placeTrade, watchContract, refreshBalance, isDark, onLoginRequest }: Omit<Props, 'currentDigit' | 'currentQuote'>) {
   const eo = useMemo(() => computeEvenOddStats(digits), [digits]);
   const [probField, setProbField] = useState('evenProb');
   const [comparator, setComparator] = useState('>');
@@ -392,7 +485,7 @@ function EvenOddStatsCard({ digits, symbol, account, placeTrade, isDark, onLogin
   }, [probField, comparator, probValue, lastNEnabled, lastN, lastNType]);
 
   const conditionsMet = useMemo(() => evaluateAllRules(rules, { digits, barrier: 5, targetDigit: 5 }), [rules, digits]);
-  const { placing, log } = useAutoTrade(running, digits, conditionsMet, stake, martingale, ticks, action, 5, 5, symbol, placeTrade, () => setRunning(false));
+  const { placing, log, executeManualTrade } = useAutoTrade(running, digits, conditionsMet, stake, martingale, ticks, action, 5, 5, symbol, placeTrade, watchContract, refreshBalance, () => setRunning(false));
 
   return (
     <TradeCard title="Even/Odd" statusDot={running ? 'green' : 'gray'} isDark={isDark}>
@@ -422,18 +515,27 @@ function EvenOddStatsCard({ digits, symbol, account, placeTrade, isDark, onLogin
       />
       <StakeRow stake={stake} onStake={setStake} ticks={ticks} onTicks={setTicks} martingale={martingale} onMartingale={setMartingale} />
       {log.length > 0 && (
-        <div className="flex gap-2 text-[10px]">
-          <span className="text-green-600 font-bold">Placed: {log.filter(l => l.result === 'placed').length}</span>
-          <span className="text-red-500 font-bold">Errors: {log.filter(l => l.result === 'error').length}</span>
+        <div className="flex flex-wrap gap-2 text-[10px] items-center">
+          <span className="text-blue-600 font-bold">Placed: {log.filter(l => l.result === 'placed').length}</span>
+          <span className="text-green-600 font-bold">Wins: {log.filter(l => l.result === 'won').length}</span>
+          <span className="text-red-500 font-bold">Losses: {log.filter(l => l.result === 'lost').length}</span>
         </div>
       )}
-      <AutoButton running={running} loading={placing} onClick={() => { if (!account) { onLoginRequest(); return; } setRunning(r => !r); }} />
+      <ActionButtons
+        running={running}
+        loading={placing}
+        placingManual={placing}
+        onToggleAuto={() => { if (!account) { onLoginRequest(); return; } setRunning(r => !r); }}
+        onManualTrade={() => { if (!account) { onLoginRequest(); return; } executeManualTrade(); }}
+        isLoggedIn={!!account}
+        onLoginRequest={onLoginRequest}
+      />
     </TradeCard>
   );
 }
 
 // ─── 3. Even / Odd Pattern Card ───────────────────────────────────────────────
-function EvenOddPatternCard({ digits, symbol, account, placeTrade, isDark, onLoginRequest }: Omit<Props, 'currentDigit' | 'currentQuote'>) {
+function EvenOddPatternCard({ digits, symbol, account, placeTrade, watchContract, refreshBalance, isDark, onLoginRequest }: Omit<Props, 'currentDigit' | 'currentQuote'>) {
   const [lastN, setLastN] = useState(3);
   const [lastNType, setLastNType] = useState('even');
   const [stake, setStake] = useState(0.5);
@@ -447,9 +549,8 @@ function EvenOddPatternCard({ digits, symbol, account, placeTrade, isDark, onLog
   }], [lastNType, lastN]);
 
   const conditionsMet = useMemo(() => evaluateAllRules(rules, { digits, barrier: 5, targetDigit: 5 }), [rules, digits]);
-  const { placing, log } = useAutoTrade(running, digits, conditionsMet, stake, martingale, ticks, action, 5, 5, symbol, placeTrade, () => setRunning(false));
+  const { placing, log, executeManualTrade } = useAutoTrade(running, digits, conditionsMet, stake, martingale, ticks, action, 5, 5, symbol, placeTrade, watchContract, refreshBalance, () => setRunning(false));
 
-  // Streak
   const streak = useMemo(() => {
     if (!digits.length) return { count: 0, type: 'Even' };
     let count = 0;
@@ -465,7 +566,7 @@ function EvenOddPatternCard({ digits, symbol, account, placeTrade, isDark, onLog
   const last20 = digits.slice(-20);
 
   return (
-    <TradeCard title="Even/Odd" statusDot={running ? 'green' : 'gray'} isDark={isDark}>
+    <TradeCard title="Even/Odd Pattern" statusDot={running ? 'green' : 'gray'} isDark={isDark}>
       <div>
         <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Last Digits Pattern</p>
         <div className="flex flex-wrap gap-1">
@@ -484,11 +585,10 @@ function EvenOddPatternCard({ digits, symbol, account, placeTrade, isDark, onLog
           })}
         </div>
         <p className="mt-1 text-[10px] text-gray-400">Recent digit pattern (E=Even, O=Odd)</p>
-        <p className="text-xs font-semibold text-gray-700 mt-0.5">
+        <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mt-0.5">
           Current streak: <span className={streak.type === 'Even' ? 'text-blue-600' : 'text-purple-600'}>{streak.count} {streak.type}</span>
         </p>
       </div>
-      {/* Condition: check if last N digits are type */}
       <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-2">
         <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Trading Condition</p>
         <div className="flex flex-wrap items-center gap-1.5">
@@ -508,17 +608,27 @@ function EvenOddPatternCard({ digits, symbol, account, placeTrade, isDark, onLog
       </div>
       <StakeRow stake={stake} onStake={setStake} ticks={ticks} onTicks={setTicks} martingale={martingale} onMartingale={setMartingale} />
       {log.length > 0 && (
-        <div className="flex gap-2 text-[10px]">
-          <span className="text-green-600 font-bold">Placed: {log.filter(l => l.result === 'placed').length}</span>
+        <div className="flex flex-wrap gap-2 text-[10px] items-center">
+          <span className="text-blue-600 font-bold">Placed: {log.filter(l => l.result === 'placed').length}</span>
+          <span className="text-green-600 font-bold">Wins: {log.filter(l => l.result === 'won').length}</span>
+          <span className="text-red-500 font-bold">Losses: {log.filter(l => l.result === 'lost').length}</span>
         </div>
       )}
-      <AutoButton running={running} loading={placing} onClick={() => { if (!account) { onLoginRequest(); return; } setRunning(r => !r); }} />
+      <ActionButtons
+        running={running}
+        loading={placing}
+        placingManual={placing}
+        onToggleAuto={() => { if (!account) { onLoginRequest(); return; } setRunning(r => !r); }}
+        onManualTrade={() => { if (!account) { onLoginRequest(); return; } executeManualTrade(); }}
+        isLoggedIn={!!account}
+        onLoginRequest={onLoginRequest}
+      />
     </TradeCard>
   );
 }
 
 // ─── 4. Over / Under Stats Card ───────────────────────────────────────────────
-function OverUnderStatsCard({ digits, symbol, account, placeTrade, isDark, onLoginRequest }: Omit<Props, 'currentDigit' | 'currentQuote'>) {
+function OverUnderStatsCard({ digits, symbol, account, placeTrade, watchContract, refreshBalance, isDark, onLoginRequest }: Omit<Props, 'currentDigit' | 'currentQuote'>) {
   const [barrier, setBarrier] = useState(5);
   const ou = useMemo(() => computeOverUnderStats(digits, barrier), [digits, barrier]);
   const [probField, setProbField] = useState('overProb');
@@ -540,15 +650,14 @@ function OverUnderStatsCard({ digits, symbol, account, placeTrade, isDark, onLog
   }, [probField, comparator, probValue, lastNEnabled, lastN, lastNType]);
 
   const conditionsMet = useMemo(() => evaluateAllRules(rules, { digits, barrier, targetDigit: 5 }), [rules, digits, barrier]);
-  const { placing, log } = useAutoTrade(running, digits, conditionsMet, stake, martingale, ticks, action, barrier, 5, symbol, placeTrade, () => setRunning(false));
+  const { placing, log, executeManualTrade } = useAutoTrade(running, digits, conditionsMet, stake, martingale, ticks, action, barrier, 5, symbol, placeTrade, watchContract, refreshBalance, () => setRunning(false));
 
   return (
     <TradeCard title="Over/Under" statusDot={running ? 'green' : 'gray'} isDark={isDark}>
-      {/* Barrier */}
       <div className="flex items-center gap-2 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2">
         <span className="text-xs text-gray-500">Barrier</span>
         <SmallInput value={barrier} onChange={v => setBarrier(Math.max(0, Math.min(9, Math.round(v))))} min={0} step={1} className="w-10 text-center" />
-        <span className="text-[10px] text-gray-400 ml-1">Under: 0–{barrier - 1}, Equals: {barrier}, Over: {barrier + 1}–9</span>
+        <span className="text-[10px] text-gray-400 ml-1">Under: 0–{barrier - 1}, Over: {barrier + 1}–9</span>
       </div>
       <div className="space-y-1.5">
         <div className="flex items-center gap-2">
@@ -577,17 +686,27 @@ function OverUnderStatsCard({ digits, symbol, account, placeTrade, isDark, onLog
       />
       <StakeRow stake={stake} onStake={setStake} ticks={ticks} onTicks={setTicks} martingale={martingale} onMartingale={setMartingale} />
       {log.length > 0 && (
-        <div className="flex gap-2 text-[10px]">
-          <span className="text-green-600 font-bold">Placed: {log.filter(l => l.result === 'placed').length}</span>
+        <div className="flex flex-wrap gap-2 text-[10px] items-center">
+          <span className="text-blue-600 font-bold">Placed: {log.filter(l => l.result === 'placed').length}</span>
+          <span className="text-green-600 font-bold">Wins: {log.filter(l => l.result === 'won').length}</span>
+          <span className="text-red-500 font-bold">Losses: {log.filter(l => l.result === 'lost').length}</span>
         </div>
       )}
-      <AutoButton running={running} loading={placing} onClick={() => { if (!account) { onLoginRequest(); return; } setRunning(r => !r); }} />
+      <ActionButtons
+        running={running}
+        loading={placing}
+        placingManual={placing}
+        onToggleAuto={() => { if (!account) { onLoginRequest(); return; } setRunning(r => !r); }}
+        onManualTrade={() => { if (!account) { onLoginRequest(); return; } executeManualTrade(); }}
+        isLoggedIn={!!account}
+        onLoginRequest={onLoginRequest}
+      />
     </TradeCard>
   );
 }
 
 // ─── 5. Over / Under Pattern Card ────────────────────────────────────────────
-function OverUnderPatternCard({ digits, symbol, account, placeTrade, isDark, onLoginRequest }: Omit<Props, 'currentDigit' | 'currentQuote'>) {
+function OverUnderPatternCard({ digits, symbol, account, placeTrade, watchContract, refreshBalance, isDark, onLoginRequest }: Omit<Props, 'currentDigit' | 'currentQuote'>) {
   const [barrier, setBarrier] = useState(5);
   const [lastN, setLastN] = useState(3);
   const [lastNType, setLastNType] = useState('over');
@@ -606,12 +725,12 @@ function OverUnderPatternCard({ digits, symbol, account, placeTrade, isDark, onL
   }], [lastNType, lastN]);
 
   const conditionsMet = useMemo(() => evaluateAllRules(rules, { digits, barrier, targetDigit: 5 }), [rules, digits, barrier]);
-  const { placing, log } = useAutoTrade(running, digits, conditionsMet, stake, martingale, ticks, action, barrier, 5, symbol, placeTrade, () => setRunning(false));
+  const { placing, log, executeManualTrade } = useAutoTrade(running, digits, conditionsMet, stake, martingale, ticks, action, barrier, 5, symbol, placeTrade, watchContract, refreshBalance, () => setRunning(false));
 
   const maxPct = Math.max(...ds.percents, 1);
 
   return (
-    <TradeCard title="Over/Under" statusDot={running ? 'green' : 'gray'} isDark={isDark}>
+    <TradeCard title="Over/Under Pattern" statusDot={running ? 'green' : 'gray'} isDark={isDark}>
       <div>
         <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Last Digits Pattern</p>
         <div className="flex flex-wrap gap-1">
@@ -629,7 +748,6 @@ function OverUnderPatternCard({ digits, symbol, account, placeTrade, isDark, onL
         </div>
         <p className="mt-1 text-[10px] text-gray-400">O=Over (&gt;{barrier}), E=Equal (={barrier}), U=Under (&lt;{barrier})</p>
       </div>
-      {/* Digit frequency bars */}
       <div>
         <div className="flex items-end gap-1" style={{ height: 56 }}>
           {Array.from({ length: 10 }, (_, d) => {
@@ -647,7 +765,6 @@ function OverUnderPatternCard({ digits, symbol, account, placeTrade, isDark, onL
           })}
         </div>
       </div>
-      {/* Condition */}
       <div className="flex items-center gap-2 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2">
         <span className="text-xs text-gray-500">Barrier</span>
         <SmallInput value={barrier} onChange={v => setBarrier(Math.max(0, Math.min(9, Math.round(v))))} min={0} step={1} className="w-10 text-center" />
@@ -668,17 +785,27 @@ function OverUnderPatternCard({ digits, symbol, account, placeTrade, isDark, onL
       </div>
       <StakeRow stake={stake} onStake={setStake} ticks={ticks} onTicks={setTicks} martingale={martingale} onMartingale={setMartingale} />
       {log.length > 0 && (
-        <div className="flex gap-2 text-[10px]">
-          <span className="text-green-600 font-bold">Placed: {log.filter(l => l.result === 'placed').length}</span>
+        <div className="flex flex-wrap gap-2 text-[10px] items-center">
+          <span className="text-blue-600 font-bold">Placed: {log.filter(l => l.result === 'placed').length}</span>
+          <span className="text-green-600 font-bold">Wins: {log.filter(l => l.result === 'won').length}</span>
+          <span className="text-red-500 font-bold">Losses: {log.filter(l => l.result === 'lost').length}</span>
         </div>
       )}
-      <AutoButton running={running} loading={placing} onClick={() => { if (!account) { onLoginRequest(); return; } setRunning(r => !r); }} />
+      <ActionButtons
+        running={running}
+        loading={placing}
+        placingManual={placing}
+        onToggleAuto={() => { if (!account) { onLoginRequest(); return; } setRunning(r => !r); }}
+        onManualTrade={() => { if (!account) { onLoginRequest(); return; } executeManualTrade(); }}
+        isLoggedIn={!!account}
+        onLoginRequest={onLoginRequest}
+      />
     </TradeCard>
   );
 }
 
 // ─── 6. Matches / Differs Card ────────────────────────────────────────────────
-function MatchesDiffersCard({ digits, symbol, account, placeTrade, isDark, onLoginRequest }: Omit<Props, 'currentDigit' | 'currentQuote'>) {
+function MatchesDiffersCard({ digits, symbol, account, placeTrade, watchContract, refreshBalance, isDark, onLoginRequest }: Omit<Props, 'currentDigit' | 'currentQuote'>) {
   const [targetDigit, setTargetDigit] = useState(5);
   const [probField, setProbField] = useState('digitProb');
   const [comparator, setComparator] = useState('>');
@@ -707,15 +834,13 @@ function MatchesDiffersCard({ digits, symbol, account, placeTrade, isDark, onLog
   }, [probField, comparator, probValue]);
 
   const conditionsMet = useMemo(() => evaluateAllRules(rules, { digits, barrier: 5, targetDigit }), [rules, digits, targetDigit]);
-  const { placing, log } = useAutoTrade(running, digits, conditionsMet, stake, martingale, ticks, action, 5, targetDigit, symbol, placeTrade, () => setRunning(false));
+  const { placing, log, executeManualTrade } = useAutoTrade(running, digits, conditionsMet, stake, martingale, ticks, action, 5, targetDigit, symbol, placeTrade, watchContract, refreshBalance, () => setRunning(false));
 
   return (
     <TradeCard title="Matches/Differs" statusDot={running ? 'green' : 'gray'} isDark={isDark}>
-      {/* Most frequent */}
       <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-800">
         Most frequent: <span className="font-black">{mostFreq.digit}</span> ({mostFreq.pct.toFixed(2)}%)
       </div>
-      {/* Matches/Differs bars */}
       <div className="space-y-1.5">
         <div className="flex items-center gap-2">
           <span className="w-20 text-xs font-semibold text-purple-600">Matches {targetDigit}</span>
@@ -729,7 +854,6 @@ function MatchesDiffersCard({ digits, symbol, account, placeTrade, isDark, onLog
         </div>
         <p className="text-[10px] text-gray-400">Barrier digit {targetDigit} appears {matchPct.toFixed(2)}% of the time</p>
       </div>
-      {/* Digit freq distribution */}
       <div>
         <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Digit Frequency Distribution</p>
         <div className="flex items-end gap-1" style={{ height: 56 }}>
@@ -747,7 +871,6 @@ function MatchesDiffersCard({ digits, symbol, account, placeTrade, isDark, onLog
           })}
         </div>
       </div>
-      {/* Condition */}
       <InlineConditionBuilder
         probField={probField} probFieldOptions={[{ value: 'digitProb', label: 'Matches Prob' }, { value: 'differProb', label: 'Differs Prob' }]}
         onProbFieldChange={setProbField}
@@ -760,18 +883,28 @@ function MatchesDiffersCard({ digits, symbol, account, placeTrade, isDark, onLog
       />
       <StakeRow stake={stake} onStake={setStake} ticks={ticks} onTicks={setTicks} martingale={martingale} onMartingale={setMartingale} />
       {log.length > 0 && (
-        <div className="flex gap-2 text-[10px]">
-          <span className="text-green-600 font-bold">Placed: {log.filter(l => l.result === 'placed').length}</span>
+        <div className="flex flex-wrap gap-2 text-[10px] items-center">
+          <span className="text-blue-600 font-bold">Placed: {log.filter(l => l.result === 'placed').length}</span>
+          <span className="text-green-600 font-bold">Wins: {log.filter(l => l.result === 'won').length}</span>
+          <span className="text-red-500 font-bold">Losses: {log.filter(l => l.result === 'lost').length}</span>
         </div>
       )}
-      <AutoButton running={running} loading={placing} onClick={() => { if (!account) { onLoginRequest(); return; } setRunning(r => !r); }} />
+      <ActionButtons
+        running={running}
+        loading={placing}
+        placingManual={placing}
+        onToggleAuto={() => { if (!account) { onLoginRequest(); return; } setRunning(r => !r); }}
+        onManualTrade={() => { if (!account) { onLoginRequest(); return; } executeManualTrade(); }}
+        isLoggedIn={!!account}
+        onLoginRequest={onLoginRequest}
+      />
     </TradeCard>
   );
 }
 
 // ─── Main Tab ─────────────────────────────────────────────────────────────────
-export function SmartTradingTab({ digits, currentDigit, currentQuote, symbol, account, placeTrade, isDark, onLoginRequest }: Props) {
-  const cardProps = { digits, symbol, account, placeTrade, isDark, onLoginRequest };
+export function SmartTradingTab({ digits, currentDigit, currentQuote, symbol, account, placeTrade, watchContract, refreshBalance, isDark, onLoginRequest }: Props) {
+  const cardProps = { digits, symbol, account, placeTrade, watchContract, refreshBalance, isDark, onLoginRequest };
 
   return (
     <div className="space-y-4">

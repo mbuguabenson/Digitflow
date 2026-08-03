@@ -28,6 +28,7 @@ import { useDerivTicks, useActiveSymbols, type SymbolInfo } from '@/hooks/useDer
 import { useDerivAuth, type Account, type AccountInfo } from '@/hooks/useDerivAuth';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useTheme } from '@/hooks/useTheme';
+import { AccountDropdownCard } from '@/components/AccountDropdownCard';
 import { TransactionCard } from '@/components/TransactionCard';
 import { OverUnderTab } from '@/components/tabs/OverUnderTab';
 import { MatchesTab } from '@/components/tabs/MatchesTab';
@@ -90,7 +91,7 @@ export default function App() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const { digits, quotes, currentDigit, currentQuote, status, tickCount, historyLoading, fetchHistory } = useDerivTicks(symbol);
   const { symbols, loading: symbolsLoading } = useActiveSymbols();
-  const { account, accounts, loading: authLoading, error: authError, loginWithOAuth, logout, placeTrade: rawPlaceTrade, watchContract } = useDerivAuth();
+  const { account, accounts, loading: authLoading, error: authError, loginWithOAuth, logout, selectAccount, refreshBalance, placeTrade: rawPlaceTrade, watchContract } = useDerivAuth();
   const { transactions, addTransaction, clearTransactions, setWatchFn } = useTransactions();
 
   useEffect(() => { setWatchFn(watchContract); }, [watchContract, setWatchFn]);
@@ -332,41 +333,16 @@ export default function App() {
                     {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                   </button>
 
-                  {/* Login / Account */}
+                  {/* Login / Account Card */}
                   {account ? (
-                    <div className="flex items-center gap-2.5">
-                      <div className={cn(
-                        'flex items-center gap-2 rounded-full px-3 py-1.5 backdrop-blur-md border',
-                        isDark
-                          ? 'bg-emerald-500/10 border-emerald-400/30'
-                          : 'bg-emerald-50 border-emerald-200/50'
-                      )}>
-                        <Wallet className={cn('h-3.5 w-3.5', isDark ? 'text-emerald-400' : 'text-emerald-600')} />
-                        <span className={cn('text-xs font-bold', isDark ? 'text-emerald-300' : 'text-emerald-700')}>
-                          {formatBalance(account)}
-                        </span>
-                        {account.isVirtual && (
-                          <span className={cn(
-                            'rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase',
-                            isDark ? 'bg-amber-400/20 text-amber-300' : 'bg-amber-100 text-amber-600'
-                          )}>
-                            Demo
-                          </span>
-                        )}
-                      </div>
-                      <button
-                        onClick={logout}
-                        className={cn(
-                          'flex h-9 w-9 items-center justify-center rounded-full border backdrop-blur-md transition-all hover:scale-105',
-                          isDark
-                            ? 'bg-red-500/10 border-red-400/30 text-red-400 hover:bg-red-500/20'
-                            : 'bg-red-50 border-red-200/50 text-red-500 hover:bg-red-100'
-                        )}
-                        title="Logout"
-                      >
-                        <LogOut className="h-4 w-4" />
-                      </button>
-                    </div>
+                    <AccountDropdownCard
+                      account={account}
+                      accounts={accounts}
+                      selectAccount={selectAccount}
+                      logout={logout}
+                      refreshBalance={refreshBalance}
+                      isDark={isDark}
+                    />
                   ) : (
                     <button
                       onClick={() => setShowLoginModal(true)}
@@ -631,6 +607,8 @@ export default function App() {
                   symbol={symbol}
                   account={account}
                   placeTrade={placeTrade}
+                  watchContract={watchContract}
+                  refreshBalance={refreshBalance}
                   isDark={isDark}
                   onLoginRequest={() => setShowLoginModal(true)}
                 />
