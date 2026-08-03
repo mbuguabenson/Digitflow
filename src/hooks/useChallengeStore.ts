@@ -2,11 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import type { Challenge, ChallengeConfig } from '@/lib/challenge';
 import { calculateChallenge } from '@/lib/challenge';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/config';
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 
 type ChallengeRow = {
   id: string;
