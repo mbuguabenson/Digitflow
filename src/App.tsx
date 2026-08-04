@@ -40,11 +40,15 @@ import { SmartTradingTab } from '@/components/tabs/SmartTradingTab';
 import { CompoundingChallengeTab } from '@/components/tabs/CompoundingChallengeTab';
 import { TradingEngineTab } from '@/components/tabs/TradingEngineTab';
 import { SignalsTab } from '@/components/tabs/SignalsTab';
+import { AutotraderTab } from '@/components/tabs/AutotraderTab';
 import { cn } from '@/lib/utils';
 
-type TabId = 'over-under' | 'matches' | 'even-odd' | 'differs' | 'ai' | 'smart' | 'smart-trading' | 'challenge' | 'engine' | 'signals';
+type TabId = 'autotrader' | 'over-under' | 'matches' | 'even-odd' | 'differs' | 'ai' | 'smart' | 'smart-trading' | 'challenge' | 'engine' | 'signals';
+
+import { Bot } from 'lucide-react';
 
 const TABS: { id: TabId; label: string; icon: typeof Activity }[] = [
+  { id: 'autotrader', label: 'Autotrader', icon: Bot },
   { id: 'challenge', label: 'Challenge', icon: Trophy },
   { id: 'engine', label: 'Trading Engine', icon: Flame },
   { id: 'smart-trading', label: 'Smart Trading', icon: TrendingDown },
@@ -539,6 +543,16 @@ export default function App() {
               {activeTab === 'smart' && <SmartAnalysisTab digits={digits} currentDigit={currentDigit} isDark={isDark} />}
               {activeTab === 'engine' && (
                 <TradingEngineTab
+                  account={account}
+                  placeTrade={placeTrade}
+                  watchContract={watchContract}
+                  refreshBalance={refreshBalance}
+                  isDark={isDark}
+                  onLoginRequest={() => setShowLoginModal(true)}
+                />
+              )}
+              {activeTab === 'autotrader' && (
+                <AutotraderTab
                   account={account}
                   placeTrade={placeTrade}
                   watchContract={watchContract}
