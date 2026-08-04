@@ -132,6 +132,31 @@ export default function App() {
   const tickerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const activeTabRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (activeTabRef.current && scrollContainerRef.current) {
+      const container = scrollContainerRef.current;
+      const element = activeTabRef.current;
+
+      const containerScrollLeft = container.scrollLeft;
+      const containerWidth = container.clientWidth;
+      const elementOffsetLeft = element.offsetLeft;
+      const elementWidth = element.clientWidth;
+
+      const isOutOfLeft = elementOffsetLeft < containerScrollLeft;
+      const isOutOfRight = (elementOffsetLeft + elementWidth) > (containerScrollLeft + containerWidth);
+
+      if (isOutOfLeft || isOutOfRight) {
+        container.scrollTo({
+          left: elementOffsetLeft - (containerWidth / 2) + (elementWidth / 2),
+          behavior: 'smooth'
+        });
+      }
+    }
+  }, [activeTab]);
+
   const currentSymbolInfo = symbols.find((s) => s.symbol === symbol);
   const currentSymbolName = currentSymbolInfo?.display_name ?? symbol;
 
@@ -416,129 +441,19 @@ export default function App() {
           </div>
         </header>
 
-        {/* ── Account Balance Cards ── */}
-        {account && accounts.length > 0 && (
-          <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {accounts.map((acct) => {
-                const isDemo = acct.isVirtual;
-                const isActive = acct.isActive;
-                return (
-                  <div
-                    key={acct.loginid}
-                    className={cn(
-                      'group relative overflow-hidden rounded-2xl border p-4 backdrop-blur-md transition-all hover:scale-[1.02]',
-                      isDark
-                        ? 'bg-white/5 border-white/10'
-                        : 'bg-white/70 border-blue-200/40',
-                      isActive && 'ring-2 ring-blue-400/50'
-                    )}
-                  >
-                    {/* Glow accent */}
-                    <div className={cn(
-                      'absolute -right-8 -top-8 h-24 w-24 rounded-full blur-2xl transition-opacity',
-                      isDemo
-                        ? isDark ? 'bg-amber-500/15' : 'bg-amber-300/20'
-                        : isDark ? 'bg-emerald-500/15' : 'bg-emerald-300/20'
-                    )} />
-
-                    <div className="relative flex items-start justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className={cn(
-                          'flex h-10 w-10 items-center justify-center rounded-xl',
-                          isDemo
-                            ? 'bg-gradient-to-br from-amber-400 to-orange-400'
-                            : 'bg-gradient-to-br from-emerald-500 to-teal-400'
-                        )}>
-                          {isDemo ? <Wallet className="h-5 w-5 text-white" /> : <Wallet className="h-5 w-5 text-white" />}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className={cn('text-sm font-bold', headerTextPrimary)}>
-                              {isDemo ? 'Demo Account' : 'Real Account'}
-                            </span>
-                            {isActive && (
-                              <span className={cn(
-                                'rounded-full px-1.5 py-0.5 text-[8px] font-bold uppercase',
-                                isDark ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-100 text-blue-600'
-                              )}>
-                                Active
-                              </span>
-                            )}
-                          </div>
-                          <span className={cn('text-[11px] font-mono', headerTextMuted)}>
-                            {acct.loginid}
-                          </span>
-                        </div>
-                      </div>
-                      <span className={cn(
-                        'rounded-full px-2 py-0.5 text-[9px] font-bold uppercase',
-                        isDemo
-                          ? isDark ? 'bg-amber-400/15 text-amber-300' : 'bg-amber-100 text-amber-600'
-                          : isDark ? 'bg-emerald-400/15 text-emerald-300' : 'bg-emerald-100 text-emerald-600'
-                      )}>
-                        {isDemo ? 'Demo' : 'Real'}
-                      </span>
-                    </div>
-
-                    <div className="relative mt-4">
-                      <span className={cn('text-[11px] font-semibold uppercase tracking-wide', headerTextMuted)}>
-                        Balance
-                      </span>
-                      <div className="mt-0.5 flex items-baseline gap-1">
-                        <span className={cn(
-                          'text-2xl font-bold tabular-nums',
-                          isDemo
-                            ? isDark ? 'text-amber-200' : 'text-amber-700'
-                            : isDark ? 'text-emerald-200' : 'text-emerald-700'
-                        )}>
-                          {acct.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                        <span className={cn('text-sm font-semibold', headerTextMuted)}>
-                          {acct.currency}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* Logout card */}
-              <button
-                onClick={logout}
-                className={cn(
-                  'group relative overflow-hidden rounded-2xl border p-4 backdrop-blur-md transition-all hover:scale-[1.02]',
-                  isDark
-                    ? 'bg-red-500/5 border-red-400/20 hover:bg-red-500/10'
-                    : 'bg-red-50/60 border-red-200/40 hover:bg-red-100/60'
-                )}
-              >
-                <div className="flex h-full min-h-[88px] flex-col items-center justify-center gap-2">
-                  <div className={cn(
-                    'flex h-10 w-10 items-center justify-center rounded-full transition-transform group-hover:scale-110',
-                    isDark ? 'bg-red-500/15 text-red-400' : 'bg-red-100 text-red-500'
-                  )}>
-                    <LogOut className="h-5 w-5" />
-                  </div>
-                  <span className={cn('text-sm font-bold', isDark ? 'text-red-300' : 'text-red-600')}>
-                    Logout
-                  </span>
-                </div>
-              </button>
-            </div>
-          </div>
-        )}
+        {/* Redundant landing page accounts cards removed. Using header accounts dropdown instead. */}
 
         {/* ── Tab Navigation ── */}
         <nav className="sticky top-[122px] z-20">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="flex gap-2 overflow-x-auto py-3">
+            <div ref={scrollContainerRef} className="flex gap-2 overflow-x-auto py-3">
               {TABS.map((tab) => {
                 const Icon = tab.icon;
                 const active = activeTab === tab.id;
                 return (
                   <button
                     key={tab.id}
+                    ref={active ? activeTabRef : null}
                     onClick={() => setActiveTab(tab.id)}
                     className={cn(
                       'flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-all',
@@ -626,6 +541,8 @@ export default function App() {
                 <TradingEngineTab
                   account={account}
                   placeTrade={placeTrade}
+                  watchContract={watchContract}
+                  refreshBalance={refreshBalance}
                   isDark={isDark}
                   onLoginRequest={() => setShowLoginModal(true)}
                 />

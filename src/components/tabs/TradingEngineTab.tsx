@@ -26,6 +26,8 @@ type Props = {
     symbol: string; contractType: string; barrier?: string;
     amount: number; duration: number; durationUnit: string; basis?: string;
   }) => Promise<TradeResult>;
+  watchContract?: (contractId: string, onUpdate: (data: Record<string, unknown>) => void) => () => void;
+  refreshBalance?: () => Promise<void>;
   isDark: boolean;
   onLoginRequest: () => void;
 };
@@ -217,10 +219,12 @@ function SignalCard({ signal, isDark }: { signal: TradingSignal; isDark: boolean
 
 // ─── Trading Console ─────────────────────────────────────────────────────────
 function TradingConsole({
-  account, placeTrade, isDark, onLoginRequest, symbol, strategy, signal, isAutoMode,
+  account, placeTrade, watchContract, refreshBalance, isDark, onLoginRequest, symbol, strategy, signal, isAutoMode,
 }: {
   account: Account | null;
   placeTrade: Props['placeTrade'];
+  watchContract?: Props['watchContract'];
+  refreshBalance?: Props['refreshBalance'];
   isDark: boolean;
   onLoginRequest: () => void;
   symbol: string;
@@ -246,6 +250,7 @@ function TradingConsole({
   const autoRef = useRef(false);
   const lossRef = useRef(0);
   const stakeRef = useRef(stake);
+  const placingRef = useRef(false);
 
   useEffect(() => { setTradeSymbol(symbol); }, [symbol]);
   useEffect(() => {
@@ -256,17 +261,38 @@ function TradingConsole({
 
   const stats = useMemo(() => calcTradeStats(transactions), [transactions]);
 
+  const updateTransaction = useCallback((contractId: string, updates: Partial<Transaction>) => {
+    setTransactions(prev => prev.map(t => t.contractId === contractId ? { ...t, ...updates } : t));
+  }, []);
+
   const addTransaction = useCallback((t: Omit<Transaction, 'id' | 'time'>) => {
     setTransactions(prev => [{ ...t, id: Math.random().toString(36).slice(2), time: new Date().toLocaleTimeString() }, ...prev].slice(0, 100));
   }, []);
 
-  const executeTrade = useCallback(async (useEntry?: boolean): Promise<boolean> => {
-    if (!account) { onLoginRequest(); return false; }
-    // If entry digit is set, check if current last digit matches
-    if (useEntry && entryDigit !== '' && entryDigit !== undefined) {
-      // In real implementation, we'd check the latest tick digit here
-      // For now, we proceed as the entry check is handled by the tick watcher
+  // Handles trade result from watchContract callback
+  const handleTradeResult = useCallback((isWin: boolean, profit: number, tradeStake: number) => {
+    if (isWin) {
+      lossRef.current = 0;
+      setConsecutiveLosses(0);
+      stakeRef.current = stake;
+      setCurrentStake(stake);
+    } else {
+      lossRef.current += 1;
+      setConsecutiveLosses(lossRef.current);
+      if (martingale) {
+        stakeRef.current = parseFloat((tradeStake * martingaleMult).toFixed(2));
+        setCurrentStake(stakeRef.current);
+      }
     }
+    refreshBalance?.();
+    placingRef.current = false;
+    setTradeLoading(false);
+  }, [stake, martingale, martingaleMult, refreshBalance]);
+
+  const executeTrade = useCallback(async (): Promise<boolean> => {
+    if (!account) { onLoginRequest(); return false; }
+    if (placingRef.current) return false; // Prevent duplicate trades
+    placingRef.current = true;
     setTradeLoading(true);
     const tradeStake = stakeRef.current;
     const result = await placeTrade({
@@ -278,14 +304,36 @@ function TradingConsole({
       durationUnit: 't',
       basis: 'stake',
     });
-    setTradeLoading(false);
 
-    if (result.success) {
+    if (result.success && result.contractId) {
       addTransaction({
         symbol: tradeSymbol, strategy: STRATEGIES.find(s => s.id === strategy)?.label ?? strategy,
         side: contractType, stake: tradeStake, result: 'pending', payout: 0, profit: 0,
         contractId: result.contractId,
       });
+
+      // Watch contract for real settlement
+      if (watchContract) {
+        const unwatch = watchContract(result.contractId, (data) => {
+          const poc = (data as any).proposal_open_contract;
+          if (poc && (poc.is_sold === 1 || poc.status === 'won' || poc.status === 'lost')) {
+            unwatch();
+            const profit = Number(poc.profit || 0);
+            const payout = Number(poc.payout || 0);
+            const isWin = poc.status === 'won' || profit > 0;
+            updateTransaction(result.contractId!, {
+              result: isWin ? 'win' : 'loss',
+              profit,
+              payout,
+            });
+            handleTradeResult(isWin, profit, tradeStake);
+          }
+        });
+      } else {
+        // No watchContract available, mark as placed and release lock
+        placingRef.current = false;
+        setTradeLoading(false);
+      }
       return true;
     } else {
       addTransaction({
@@ -295,48 +343,72 @@ function TradingConsole({
       lossRef.current += 1;
       setConsecutiveLosses(lossRef.current);
       if (martingale) {
-        stakeRef.current = tradeStake * martingaleMult;
+        stakeRef.current = parseFloat((tradeStake * martingaleMult).toFixed(2));
         setCurrentStake(stakeRef.current);
       }
+      placingRef.current = false;
+      setTradeLoading(false);
       return false;
     }
-  }, [account, placeTrade, tradeSymbol, contractType, barrier, ticks, entryDigit, martingale, martingaleMult, strategy, addTransaction, onLoginRequest]);
+  }, [account, placeTrade, watchContract, tradeSymbol, contractType, barrier, ticks, martingale, martingaleMult, strategy, addTransaction, updateTransaction, handleTradeResult, onLoginRequest]);
 
   const handleManualTrade = useCallback(() => {
-    executeTrade(false);
+    executeTrade();
   }, [executeTrade]);
 
-  // Auto trade loop
+  // Auto trade loop: event-driven, waits for contract settlement
   useEffect(() => {
     if (!autoTrade || !account) return;
     autoRef.current = true;
-    let stopped = false;
 
-    const run = async () => {
-      while (autoRef.current && !stopped) {
-        const currentProfit = stats.totalProfit;
-        // Check TP/SL
-        if (currentProfit >= takeProfit) {
-          setAutoTrade(false); autoRef.current = false; break;
-        }
-        if (consecutiveLosses >= stopLoss) {
-          setAutoTrade(false); autoRef.current = false; break;
-        }
-        await executeTrade(false);
-        // Wait for trade to settle (simplified: wait 3 seconds)
-        await new Promise(r => setTimeout(r, 3000));
+    const tryNextTrade = () => {
+      if (!autoRef.current) return;
+      // Check TP/SL using refs for current values
+      if (lossRef.current >= stopLoss) {
+        setAutoTrade(false);
+        autoRef.current = false;
+        return;
       }
+      // Delay 2s after last trade settles before placing next
+      setTimeout(() => {
+        if (!autoRef.current) return;
+        executeTrade();
+      }, 2000);
     };
-    run();
-    return () => { autoRef.current = false; };
+
+    // Start the first trade
+    executeTrade();
+
+    // Watch for trade settlement to trigger next trade
+    const interval = setInterval(() => {
+      if (!autoRef.current) return;
+      if (!placingRef.current) {
+        // Previous trade settled, place next
+        tryNextTrade();
+      }
+    }, 1000);
+
+    return () => {
+      autoRef.current = false;
+      clearInterval(interval);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoTrade, account]);
+
+  // Stop auto-trade if TP reached (check stats reactively)
+  useEffect(() => {
+    if (autoTrade && stats.totalProfit >= takeProfit) {
+      setAutoTrade(false);
+      autoRef.current = false;
+    }
+  }, [autoTrade, stats.totalProfit, takeProfit]);
 
   const resetStake = useCallback(() => {
     stakeRef.current = stake;
     setCurrentStake(stake);
     lossRef.current = 0;
     setConsecutiveLosses(0);
+    setTransactions([]);
   }, [stake]);
 
   const cardBg = isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200';
@@ -548,8 +620,8 @@ function RecoveryPanel({ isDark, losses, onActivate }: {
 }
 
 // ─── Hourly Sub-Tab (Over 1,2,3 / Under 6,7,8) ───────────────────────────────
-function HourlySubTab({ account, placeTrade, isDark, onLoginRequest }: {
-  account: Account | null; placeTrade: Props['placeTrade']; isDark: boolean; onLoginRequest: () => void;
+function HourlySubTab({ account, placeTrade, watchContract, refreshBalance, isDark, onLoginRequest }: {
+  account: Account | null; placeTrade: Props['placeTrade']; watchContract?: Props['watchContract']; refreshBalance?: Props['refreshBalance']; isDark: boolean; onLoginRequest: () => void;
 }) {
   const [hours, setHours] = useState(8);
   const [targetPerHour, setTargetPerHour] = useState(5);
@@ -564,6 +636,8 @@ function HourlySubTab({ account, placeTrade, isDark, onLoginRequest }: {
   const [tradeLoading, setTradeLoading] = useState(false);
   const stakeRef = useRef(1);
   const lossRef = useRef(0);
+  const placingRef = useRef(false);
+  const autoRunRef = useRef(false);
 
   const balance = account?.balance ?? 100;
   const autoStake = useMemo(() => {
@@ -579,35 +653,94 @@ function HourlySubTab({ account, placeTrade, isDark, onLoginRequest }: {
     setTransactions(prev => [{ ...t, id: Math.random().toString(36).slice(2), time: new Date().toLocaleTimeString() }, ...prev].slice(0, 100));
   }, []);
 
+  const updateTx = useCallback((contractId: string, updates: Partial<Transaction>) => {
+    setTransactions(prev => prev.map(t => t.contractId === contractId ? { ...t, ...updates } : t));
+  }, []);
+
   const executeHourlyTrade = useCallback(async () => {
     if (!account) { onLoginRequest(); return; }
+    if (placingRef.current) return; // Prevent duplicate trades
+    placingRef.current = true;
     setTradeLoading(true);
     const contractType = tradeType === 'over' ? 'DIGITOVER' : 'DIGITUNDER';
+    const tradeStake = stakeRef.current;
     const result = await placeTrade({
       symbol: 'R_100', contractType, barrier,
-      amount: stakeRef.current, duration: 1, durationUnit: 't', basis: 'stake',
+      amount: tradeStake, duration: 1, durationUnit: 't', basis: 'stake',
     });
-    setTradeLoading(false);
-    if (result.success) {
-      addTx({ symbol: 'R_100', strategy: 'Hourly', side: `${tradeType} ${barrier}`, stake: stakeRef.current, result: 'pending', payout: 0, profit: 0 });
+
+    if (result.success && result.contractId) {
+      addTx({ symbol: 'R_100', strategy: 'Hourly', side: `${tradeType} ${barrier}`, stake: tradeStake, result: 'pending', payout: 0, profit: 0, contractId: result.contractId });
+
+      if (watchContract) {
+        const unwatch = watchContract(result.contractId, (data) => {
+          const poc = (data as any).proposal_open_contract;
+          if (poc && (poc.is_sold === 1 || poc.status === 'won' || poc.status === 'lost')) {
+            unwatch();
+            const profit = Number(poc.profit || 0);
+            const payout = Number(poc.payout || 0);
+            const isWin = poc.status === 'won' || profit > 0;
+            updateTx(result.contractId!, { result: isWin ? 'win' : 'loss', profit, payout });
+
+            if (isWin) {
+              lossRef.current = 0;
+              setConsecutiveLosses(0);
+            } else {
+              lossRef.current += 1;
+              setConsecutiveLosses(lossRef.current);
+              if (useMartingale) {
+                stakeRef.current = parseFloat((tradeStake * martingaleMult).toFixed(2));
+                setCurrentStake(stakeRef.current);
+              }
+              if (lossRef.current >= 5) { setAutoRun(false); autoRunRef.current = false; }
+            }
+            refreshBalance?.();
+            placingRef.current = false;
+            setTradeLoading(false);
+          }
+        });
+      } else {
+        placingRef.current = false;
+        setTradeLoading(false);
+      }
     } else {
-      addTx({ symbol: 'R_100', strategy: 'Hourly', side: `${tradeType} ${barrier}`, stake: stakeRef.current, result: 'loss', payout: 0, profit: -stakeRef.current });
+      addTx({ symbol: 'R_100', strategy: 'Hourly', side: `${tradeType} ${barrier}`, stake: tradeStake, result: 'loss', payout: 0, profit: -tradeStake });
       lossRef.current += 1;
       setConsecutiveLosses(lossRef.current);
       if (useMartingale) {
-        stakeRef.current = stakeRef.current * martingaleMult;
+        stakeRef.current = parseFloat((tradeStake * martingaleMult).toFixed(2));
         setCurrentStake(stakeRef.current);
       }
-      if (lossRef.current >= 5) { setAutoRun(false); }
+      if (lossRef.current >= 5) { setAutoRun(false); autoRunRef.current = false; }
+      placingRef.current = false;
+      setTradeLoading(false);
     }
-  }, [account, placeTrade, tradeType, barrier, useMartingale, martingaleMult, addTx, onLoginRequest]);
+  }, [account, placeTrade, watchContract, refreshBalance, tradeType, barrier, useMartingale, martingaleMult, addTx, updateTx, onLoginRequest]);
 
+  // Auto-run bot: event-driven, waits for trade to settle
   useEffect(() => {
     if (!autoRun || !account) return;
+    autoRunRef.current = true;
+
+    // Place first trade
+    executeHourlyTrade();
+
+    // Poll to see if previous trade settled and place next
     const interval = setInterval(() => {
-      executeHourlyTrade();
-    }, 5000);
-    return () => clearInterval(interval);
+      if (!autoRunRef.current) return;
+      if (!placingRef.current) {
+        setTimeout(() => {
+          if (autoRunRef.current && !placingRef.current) {
+            executeHourlyTrade();
+          }
+        }, 2000);
+      }
+    }, 1000);
+
+    return () => {
+      autoRunRef.current = false;
+      clearInterval(interval);
+    };
   }, [autoRun, account, executeHourlyTrade]);
 
   useEffect(() => { stakeRef.current = autoStake; setCurrentStake(autoStake); }, [autoStake]);
@@ -730,7 +863,7 @@ function HourlySubTab({ account, placeTrade, isDark, onLoginRequest }: {
 }
 
 // ─── Main Component ──────────────────────────────────────────────────────────
-export function TradingEngineTab({ account, placeTrade, isDark, onLoginRequest }: Props) {
+export function TradingEngineTab({ account, placeTrade, watchContract, refreshBalance, isDark, onLoginRequest }: Props) {
   const [subTab, setSubTab] = useState<SubTab>('analyzer');
   const [autoSwitchMarkets, setAutoSwitchMarkets] = useState(true);
   const [selectedSymbol, setSelectedSymbol] = useState('R_100');
@@ -739,15 +872,8 @@ export function TradingEngineTab({ account, placeTrade, isDark, onLoginRequest }
   const [marketAnalyses, setMarketAnalyses] = useState<Record<string, MarketAnalysis>>({});
   const scanRef = useRef(false);
 
-  // Get ticks for selected symbol
-  const { digits, currentDigit, currentQuote, status } = useDerivTicks(selectedSymbol, 500);
-  const quotes = useMemo(() => {
-    // Build approximate quotes from digits (simplified)
-    const q: number[] = [];
-    let val = 1000;
-    for (const d of digits) { val += (d - 4.5) * 0.1; q.push(val); }
-    return q;
-  }, [digits]);
+  // Get ticks for selected symbol — using real quotes from Deriv WebSocket
+  const { digits, quotes, currentDigit, currentQuote, status } = useDerivTicks(selectedSymbol, 500);
 
   // Analyze selected market
   const analysis = useMemo(() => {
@@ -1025,7 +1151,8 @@ export function TradingEngineTab({ account, placeTrade, isDark, onLoginRequest }
 
               {/* Trading Console */}
               <TradingConsole
-                account={account} placeTrade={placeTrade} isDark={isDark}
+                account={account} placeTrade={placeTrade} watchContract={watchContract}
+                refreshBalance={refreshBalance} isDark={isDark}
                 onLoginRequest={onLoginRequest} symbol={selectedSymbol}
                 strategy={strategy} signal={signal} isAutoMode={false}
               />
@@ -1040,7 +1167,7 @@ export function TradingEngineTab({ account, placeTrade, isDark, onLoginRequest }
           )}
         </>
       ) : (
-        <HourlySubTab account={account} placeTrade={placeTrade} isDark={isDark} onLoginRequest={onLoginRequest} />
+        <HourlySubTab account={account} placeTrade={placeTrade} watchContract={watchContract} refreshBalance={refreshBalance} isDark={isDark} onLoginRequest={onLoginRequest} />
       )}
     </div>
   );

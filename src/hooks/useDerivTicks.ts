@@ -161,6 +161,14 @@ export function useDerivTicks(symbol: string, maxDigits = 1000) {
     let cancelled = false;
     let reconnectTimer: ReturnType<typeof setTimeout>;
 
+    // Reset tick history states immediately on symbol change
+    setDigits([]);
+    setQuotes([]);
+    setCurrentDigit(0);
+    setCurrentQuote(0);
+    setTickCount(0);
+    setHistoryLoading(true);
+
     function connect() {
       if (cancelled) return;
       setStatus('connecting');
@@ -199,12 +207,21 @@ export function useDerivTicks(symbol: string, maxDigits = 1000) {
             const ps = (data.pip_size as number) ?? pipSizeMap.get(symbol) ?? 4;
             if (ps) pipSizeMap.set(symbol, ps);
             const historyDigits = prices.map((p) => extractDigit(p, ps));
+
+            // Immediately set currentQuote and currentDigit from the latest history tick
+            if (prices.length > 0) {
+              const lastPrice = prices[prices.length - 1];
+              setCurrentQuote(lastPrice);
+              setCurrentDigit(extractDigit(lastPrice, ps));
+            }
+
             if (data.req_id === historyReqRef.current) {
               historyReqRef.current = null;
               setHistoryLoading(false);
               setDigits(historyDigits.slice(-maxDigits));
               setQuotes(prices.slice(-maxDigits));
             } else {
+              setHistoryLoading(false);
               setDigits((prev) => {
                 const merged = [...historyDigits, ...prev].slice(-maxDigits);
                 return merged;

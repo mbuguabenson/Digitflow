@@ -109,7 +109,7 @@ function connectWsForAccount(accountId: string, token: string, setAccounts: Reac
                 loginid: bal.loginid as string,
                 currency: bal.currency as string,
                 balance: bal.balance as number,
-                isVirtual: bal.is_virtual === 1 || activeAccountId.startsWith('VRTC') || activeAccountId.startsWith('VR'),
+                isVirtual: bal.loginid.startsWith('VR') || bal.loginid.startsWith('VRTC'),
               };
               listeners.forEach((fn) => fn(updatedAccount));
               
@@ -246,7 +246,7 @@ export function useDerivAuth() {
         loginid: a.account_id,
         currency: a.currency,
         balance: a.balance || 0,
-        isVirtual: a.account_type === 'demo',
+        isVirtual: a.account_type === 'demo' || a.account_id.startsWith('VR') || a.account_id.startsWith('VRTC'),
         isActive: a.status === 'active',
       }));
 
@@ -346,7 +346,7 @@ export function useDerivAuth() {
             loginid: activeRaw.account_id,
             currency: activeRaw.currency,
             balance: activeRaw.balance || 0,
-            isVirtual: activeRaw.account_type === 'demo',
+            isVirtual: activeRaw.account_type === 'demo' || activeRaw.account_id.startsWith('VR') || activeRaw.account_id.startsWith('VRTC'),
           };
           setAccount(updatedAccount);
           listeners.forEach((fn) => fn(updatedAccount));
