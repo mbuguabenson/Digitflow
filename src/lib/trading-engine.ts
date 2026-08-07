@@ -416,8 +416,8 @@ export function calcTradeStats(transactions: Transaction[]): TradeStats {
   for (const t of transactions) {
     if (t.result === 'win') wins++;
     else if (t.result === 'loss') losses++;
-    totalStake += t.stake;
-    totalProfit += t.profit;
+    totalStake += Number(t.stake) || 0;
+    totalProfit += Number(t.profit) || 0;
   }
   return { totalRuns: transactions.length, wins, losses, totalStake, totalProfit };
 }

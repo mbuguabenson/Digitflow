@@ -35,7 +35,7 @@ function formatTime(ts: number): string {
 function formatProfit(profit: number | undefined, currency: string): string {
   if (profit === undefined) return '--';
   const sign = profit >= 0 ? '+' : '';
-  return `${sign}${profit.toFixed(2)} ${currency}`;
+  return `${sign}${Number(profit).toFixed(2)} ${currency}`;
 }
 
 export function TransactionCard({
@@ -221,7 +221,7 @@ export function TransactionCard({
                               <span>·</span>
                               <span>{tx.duration}{tx.durationUnit === 't' ? ' ticks' : tx.durationUnit === 'm' ? ' min' : ' sec'}</span>
                               <span>·</span>
-                              <span>{(tx.amount || 0).toFixed(2)} stake</span>
+                              <span>{(Number(tx.amount) || 0).toFixed(2)} stake</span>
                             </div>
                           </div>
                         </div>
@@ -259,7 +259,7 @@ export function TransactionCard({
                           )}
                           {tx.payout !== undefined && (
                             <span className={mutedTextColor}>
-                              Payout: <span className={cn('font-mono font-bold', headingColor)}>{tx.payout.toFixed(2)}</span>
+                              Payout: <span className={cn('font-mono font-bold', headingColor)}>{Number(tx.payout).toFixed(2)}</span>
                             </span>
                           )}
                         </div>

@@ -538,12 +538,12 @@ function TradingConsole({
         </div>
         <div className="text-center">
           <p className={cn('text-[10px] uppercase', isDark ? 'text-slate-400' : 'text-gray-500')}>Total Stake</p>
-          <p className={cn('text-lg font-black', isDark ? 'text-white' : 'text-gray-800')}>{stats.totalStake.toFixed(2)}</p>
+          <p className={cn('text-lg font-black', isDark ? 'text-white' : 'text-gray-800')}>{Number(stats.totalStake).toFixed(2)}</p>
         </div>
         <div className="text-center col-span-2">
           <p className={cn('text-[10px] uppercase', isDark ? 'text-slate-400' : 'text-gray-500')}>Total Profit</p>
           <p className={cn('text-2xl font-black', stats.totalProfit >= 0 ? 'text-green-500' : 'text-red-500')}>
-            {stats.totalProfit >= 0 ? '+' : '-'}{Math.abs(stats.totalProfit).toFixed(2)}
+            {stats.totalProfit >= 0 ? '+' : '-'}{Math.abs(Number(stats.totalProfit)).toFixed(2)}
           </p>
         </div>
       </div>
@@ -568,7 +568,7 @@ function TradingConsole({
                   <td className={cn('px-2 py-1.5', isDark ? 'text-slate-400' : 'text-gray-500')}>{t.time}</td>
                   <td className={cn('px-2 py-1.5 font-semibold', isDark ? 'text-slate-300' : 'text-gray-700')}>{t.symbol}</td>
                   <td className={cn('px-2 py-1.5', isDark ? 'text-slate-300' : 'text-gray-700')}>{t.side}</td>
-                  <td className={cn('px-2 py-1.5 text-right tabular-nums', isDark ? 'text-slate-300' : 'text-gray-700')}>{(t.stake || 0).toFixed(2)}</td>
+                  <td className={cn('px-2 py-1.5 text-right tabular-nums', isDark ? 'text-slate-300' : 'text-gray-700')}>{(Number(t.stake) || 0).toFixed(2)}</td>
                   <td className="px-2 py-1.5 text-center">
                     <span className={cn('rounded-full px-2 py-0.5 text-[9px] font-bold uppercase',
                       t.result === 'win' ? 'bg-green-500/20 text-green-400' :
@@ -578,7 +578,7 @@ function TradingConsole({
                   </td>
                   <td className={cn('px-2 py-1.5 text-right tabular-nums font-bold',
                     t.profit > 0 ? 'text-green-500' : t.profit < 0 ? 'text-red-500' : isDark ? 'text-slate-400' : 'text-gray-400')}>
-                    {(t.profit || 0) > 0 ? '+' : ''}{(t.profit || 0).toFixed(2)}
+                    {(t.profit || 0) > 0 ? '+' : ''}{(Number(t.profit) || 0).toFixed(2)}
                   </td>
                 </tr>
               ))}
@@ -857,9 +857,9 @@ function HourlySubTab({ account, placeTrade, watchContract, refreshBalance, isDa
           <div className="text-center"><p className={cn('text-[10px] uppercase', isDark ? 'text-slate-400' : 'text-gray-500')}>Runs</p><p className={cn('text-lg font-black', isDark ? 'text-white' : 'text-gray-800')}>{stats.totalRuns}</p></div>
           <div className="text-center"><p className={cn('text-[10px] uppercase', isDark ? 'text-slate-400' : 'text-gray-500')}>Wins</p><p className="text-lg font-black text-green-500">{stats.wins}</p></div>
           <div className="text-center"><p className={cn('text-[10px] uppercase', isDark ? 'text-slate-400' : 'text-gray-500')}>Losses</p><p className="text-lg font-black text-red-500">{stats.losses}</p></div>
-          <div className="text-center"><p className={cn('text-[10px] uppercase', isDark ? 'text-slate-400' : 'text-gray-500')}>Stake</p><p className={cn('text-lg font-black', isDark ? 'text-white' : 'text-gray-800')}>{stats.totalStake.toFixed(2)}</p></div>
+          <div className="text-center"><p className={cn('text-[10px] uppercase', isDark ? 'text-slate-400' : 'text-gray-500')}>Stake</p><p className={cn('text-lg font-black', isDark ? 'text-white' : 'text-gray-800')}>{Number(stats.totalStake).toFixed(2)}</p></div>
           <div className="text-center col-span-2"><p className={cn('text-[10px] uppercase', isDark ? 'text-slate-400' : 'text-gray-500')}>Profit</p>
-            <p className={cn('text-2xl font-black', stats.totalProfit >= 0 ? 'text-green-500' : 'text-red-500')}>{stats.totalProfit >= 0 ? '+' : '-'}{Math.abs(stats.totalProfit).toFixed(2)}</p>
+            <p className={cn('text-2xl font-black', stats.totalProfit >= 0 ? 'text-green-500' : 'text-red-500')}>{stats.totalProfit >= 0 ? '+' : '-'}{Math.abs(Number(stats.totalProfit)).toFixed(2)}</p>
           </div>
         </div>
 

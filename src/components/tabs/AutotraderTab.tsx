@@ -79,11 +79,11 @@ export function AutotraderTab({ account, placeTrade, watchContract, refreshBalan
       if (sessionProfit >= takeProfit) {
         setIsBotRunning(false);
         setBotState('IDLE');
-        alert(`Take Profit reached: +$${sessionProfit.toFixed(2)}!`);
+        alert(`Take Profit reached: +$${Number(sessionProfit).toFixed(2)}!`);
       } else if (sessionProfit <= -stopLoss) {
         setIsBotRunning(false);
         setBotState('IDLE');
-        alert(`Stop Loss reached: -$${Math.abs(sessionProfit).toFixed(2)}!`);
+        alert(`Stop Loss reached: -$${Math.abs(Number(sessionProfit)).toFixed(2)}!`);
       }
     }
   }, [sessionProfit, takeProfit, stopLoss, isBotRunning]);
@@ -351,7 +351,7 @@ export function AutotraderTab({ account, placeTrade, watchContract, refreshBalan
                   </div>
                   <div className="flex justify-between items-end">
                     <span className={cn("text-xs font-mono", textMuted)}>
-                      {liveData ? liveData.price.toFixed(liveData.pipSize) : '---'}
+                      {liveData ? Number(liveData.price).toFixed(liveData.pipSize) : '---'}
                     </span>
                     <span className={cn("text-lg font-bold font-mono", digitColor)}>
                       {liveData ? liveData.digit : '-'}
@@ -395,10 +395,10 @@ export function AutotraderTab({ account, placeTrade, watchContract, refreshBalan
             <div className="flex flex-wrap items-center gap-4 text-sm font-medium bg-black/10 px-4 py-2 rounded-lg border border-white/5">
               <span className={textMuted}>Session P/L:</span>
               <span className={cn("font-bold", sessionProfit > 0 ? "text-green-500" : sessionProfit < 0 ? "text-red-500" : textTitle)}>
-                {sessionProfit > 0 ? '+' : ''}{sessionProfit.toFixed(2)} USD
+                {sessionProfit > 0 ? '+' : ''}{Number(sessionProfit).toFixed(2)} USD
               </span>
               <span className={textMuted}>Next Stake:</span>
-              <span className={textTitle}>{currentStake.toFixed(2)} USD</span>
+              <span className={textTitle}>{Number(currentStake).toFixed(2)} USD</span>
             </div>
           </div>
 
@@ -442,7 +442,7 @@ export function AutotraderTab({ account, placeTrade, watchContract, refreshBalan
                           </div>
                           <div className="flex justify-between items-center mb-2">
                             <span className={textMuted}>Confidence</span>
-                            <span className="font-bold text-emerald-400">{signal.confidence.toFixed(1)}%</span>
+                            <span className="font-bold text-emerald-400">{Number(signal.confidence).toFixed(1)}%</span>
                           </div>
                           <div className="flex justify-between items-center">
                             <span className={textMuted}>Recommendation</span>
@@ -499,7 +499,7 @@ export function AutotraderTab({ account, placeTrade, watchContract, refreshBalan
                       <div className="flex justify-between items-center text-xs">
                         <span className={textMuted}>{t.symbol} • {t.side}</span>
                         <span className={cn("font-bold", t.profit > 0 ? "text-green-500" : t.profit < 0 ? "text-red-500" : textTitle)}>
-                          {t.profit > 0 ? '+' : ''}{t.profit.toFixed(2)} USD
+                          {t.profit > 0 ? '+' : ''}{(Number(t.profit) || 0).toFixed(2)} USD
                         </span>
                       </div>
                     </div>
