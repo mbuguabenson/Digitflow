@@ -9,6 +9,7 @@ export type MarketPrice = {
   ticks: number[]; // Array of last 60 digits for analysis
   epoch: number;
   displayName: string;
+  pipSize: number;
 };
 
 // Maintains a single WebSocket connection to stream multiple markets
@@ -65,7 +66,7 @@ export function useMarketPrices() {
           const symbolInfo = targetMarkets.find(m => m.symbol === symbol);
           if (!symbolInfo) return;
           
-          const pipSize = symbolInfo.pip_size;
+          const pipSize = (tick.pip_size as number) ?? symbolInfo.pip_size;
           const fixedStr = quote.toFixed(pipSize);
           const cleaned = fixedStr.replace('.', '').replace(/[^0-9]/g, '');
           const digit = cleaned.length > 0 ? parseInt(cleaned.slice(-1), 10) : 0;
@@ -82,7 +83,8 @@ export function useMarketPrices() {
                 digit,
                 ticks: newTicks,
                 epoch,
-                displayName: symbolInfo.display_name
+                displayName: symbolInfo.display_name,
+                pipSize
               }
             };
           });

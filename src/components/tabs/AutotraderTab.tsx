@@ -351,7 +351,7 @@ export function AutotraderTab({ account, placeTrade, watchContract, refreshBalan
                   </div>
                   <div className="flex justify-between items-end">
                     <span className={cn("text-xs font-mono", textMuted)}>
-                      {liveData ? liveData.price.toFixed(m.pip_size) : '---'}
+                      {liveData ? liveData.price.toFixed(liveData.pipSize) : '---'}
                     </span>
                     <span className={cn("text-lg font-bold font-mono", digitColor)}>
                       {liveData ? liveData.digit : '-'}

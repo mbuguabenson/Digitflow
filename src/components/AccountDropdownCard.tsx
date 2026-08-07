@@ -178,19 +178,22 @@ export function AccountDropdownCard({
                               ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300'
                               : 'bg-emerald-50 border border-emerald-200 text-emerald-800'
                             : isDark
-                              ? 'hover:bg-slate-800/60 text-slate-300'
+                              ? 'hover:bg-slate-800 text-slate-300'
                               : 'hover:bg-slate-100 text-slate-700'
                         )}
                       >
-                        <div className="flex items-center gap-2.5">
-                          <USFlag3DIcon className="h-4 w-4" />
-                          <div>
-                            <p className="font-bold">{acc.loginid}</p>
-                            <p className="text-[11px] opacity-75 tabular-nums">
-                              {acc.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {acc.currency}
-                            </p>
+                          <div className="flex items-center gap-2.5">
+                            <USFlag3DIcon className="h-5 w-5" />
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <p className="font-bold text-[13px]">{acc.loginid}</p>
+                                <span className="rounded bg-emerald-500/20 px-1 text-[8px] font-black uppercase text-emerald-600 dark:text-emerald-400">Real</span>
+                              </div>
+                              <p className="text-[11px] opacity-75 tabular-nums font-semibold">
+                                {acc.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {acc.currency}
+                              </p>
+                            </div>
                           </div>
-                        </div>
                         {isSelected && <Check className="h-4 w-4 text-emerald-500" />}
                       </button>
                     );
@@ -222,19 +225,22 @@ export function AccountDropdownCard({
                               ? 'bg-amber-500/20 border border-amber-500/40 text-amber-300'
                               : 'bg-amber-50 border border-amber-200 text-amber-800'
                             : isDark
-                              ? 'hover:bg-slate-800/60 text-slate-300'
+                              ? 'hover:bg-slate-800 text-slate-300'
                               : 'hover:bg-slate-100 text-slate-700'
                         )}
                       >
-                        <div className="flex items-center gap-2.5">
-                          <DemoDIcon className="h-4 w-4" />
-                          <div>
-                            <p className="font-bold">{acc.loginid}</p>
-                            <p className="text-[11px] opacity-75 tabular-nums">
-                              {acc.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {acc.currency}
-                            </p>
+                          <div className="flex items-center gap-2.5">
+                            <DemoDIcon className="h-5 w-5" />
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <p className="font-bold text-[13px]">{acc.loginid}</p>
+                                <span className="rounded bg-amber-500/20 px-1 text-[8px] font-black uppercase text-amber-600 dark:text-amber-400">Demo</span>
+                              </div>
+                              <p className="text-[11px] opacity-75 tabular-nums font-semibold">
+                                {acc.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {acc.currency}
+                              </p>
+                            </div>
                           </div>
-                        </div>
                         {isSelected && <Check className="h-4 w-4 text-amber-500" />}
                       </button>
                     );
