@@ -289,8 +289,9 @@ function TradingConsole({
   }, [stake, martingale, martingaleMult, refreshBalance]);
 
   const executeTrade = useCallback(async (): Promise<boolean> => {
-    if (!account) { onLoginRequest(); return false; }
-    if (placingRef.current) return false; // Prevent duplicate trades
+    try {
+      if (!account) { onLoginRequest(); return false; }
+      if (placingRef.current) return false; // Prevent duplicate trades
     placingRef.current = true;
     setTradeLoading(true);
     const tradeStake = stakeRef.current;
@@ -348,7 +349,6 @@ function TradingConsole({
       placingRef.current = false;
       setTradeLoading(false);
       return false;
-    }
     } catch (error) {
       console.error("Trade execution error:", error);
       placingRef.current = false;
