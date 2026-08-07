@@ -327,11 +327,11 @@ export function calcAutoStake(
   sessionsPerDay: number,
 ): { stake: number; dailyStopLoss: number; riskPerSession: number } {
   const riskAmount = balance * (riskPercent / 100);
-  const stake = Math.max(0.35, riskAmount);
+  const stake = parseFloat(Math.max(0.35, riskAmount).toFixed(2));
   // Daily stop loss = 5 consecutive losses worth
-  const dailyStopLoss = stake * 5;
+  const dailyStopLoss = parseFloat((stake * 5).toFixed(2));
   // Risk per session = total daily risk / sessions
-  const riskPerSession = (balance * (riskPercent / 100)) / (sessionsPerDay || 1);
+  const riskPerSession = parseFloat(((balance * (riskPercent / 100)) / (sessionsPerDay || 1)).toFixed(2));
   return { stake, dailyStopLoss, riskPerSession };
 }
 

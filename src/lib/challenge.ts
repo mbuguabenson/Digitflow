@@ -231,7 +231,8 @@ export function calculateChallenge(config: ChallengeConfig, currentBalance?: num
 }
 
 export function recommendedStake(balance: number, riskPercent: number): number {
-  return Math.max(0.35, (balance * riskPercent) / 100);
+  const stake = Math.max(0.35, (balance * riskPercent) / 100);
+  return parseFloat(stake.toFixed(2));
 }
 
 export function formatCurrency(amount: number, currency = 'USD'): string {
