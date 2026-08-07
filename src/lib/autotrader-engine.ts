@@ -264,10 +264,19 @@ export function analyzeDiffers(
     reason: `Selected constant digit: ${constantDigit} (${bestPct.toFixed(1)}%)`
   };
 }
-
 export function evaluateMarkets(signals: AutotraderSignal[]): AutotraderSignal | null {
   const readyToTrade = signals.filter(s => s.action === 'TRADE');
-  if (readyToTrade.length === 0) return null;
-  readyToTrade.sort((a, b) => b.confidence - a.confidence);
-  return readyToTrade[0];
+  if (readyToTrade.length > 0) {
+    readyToTrade.sort((a, b) => b.confidence - a.confidence);
+    return readyToTrade[0];
+  }
+  
+  const cooldowns = signals.filter(s => s.action === 'COOLDOWN');
+  if (cooldowns.length > 0) {
+    return cooldowns[0]; // Any cooldown is fine, it halts the bot anyway
+  }
+  
+  // If no trades and no cooldowns, return the WAIT signal with highest confidence
+  signals.sort((a, b) => b.confidence - a.confidence);
+  return signals[0] || null;
 }

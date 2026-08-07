@@ -165,14 +165,15 @@ export default function App() {
   const currentSymbolName = currentSymbolInfo?.display_name ?? symbol;
 
   const filteredGroups = useMemo(() => {
-    if (!symbols.length) return new Map<string, SymbolInfo[]>();
+    const syms = symbols || [];
+    if (!syms.length) return new Map<string, SymbolInfo[]>();
     const filtered = searchQuery.trim()
-      ? symbols.filter((s) =>
-          s.display_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          s.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (MARKET_LABELS[s.market] ?? s.market).toLowerCase().includes(searchQuery.toLowerCase())
+      ? syms.filter((s) =>
+          s?.display_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          s?.symbol?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (MARKET_LABELS[s.market] ?? s?.market)?.toLowerCase().includes(searchQuery.toLowerCase())
         )
-      : symbols;
+      : syms;
     return groupSymbolsByMarket(filtered);
   }, [symbols, searchQuery]);
 

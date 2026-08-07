@@ -51,18 +51,20 @@ export function TransactionCard({
   const [filter, setFilter] = useState<FilterType>('all');
 
   const filtered = useMemo(() => {
-    if (filter === 'all') return transactions;
-    return transactions.filter((t) => t.status === filter);
+    const txs = transactions || [];
+    if (filter === 'all') return txs;
+    return txs.filter((t) => t?.status === filter);
   }, [transactions, filter]);
 
   const stats = useMemo(() => {
-    const settled = transactions.filter((t) => t.status === 'won' || t.status === 'lost');
-    const wins = settled.filter((t) => t.status === 'won');
-    const losses = settled.filter((t) => t.status === 'lost');
-    const pending = transactions.filter((t) => t.status === 'pending');
-    const totalProfit = settled.reduce((sum, t) => sum + (t.profit ?? 0), 0);
+    const txs = transactions || [];
+    const settled = txs.filter((t) => t?.status === 'won' || t?.status === 'lost');
+    const wins = settled.filter((t) => t?.status === 'won');
+    const losses = settled.filter((t) => t?.status === 'lost');
+    const pending = txs.filter((t) => t?.status === 'pending');
+    const totalProfit = settled.reduce((sum, t) => sum + (t?.profit ?? 0), 0);
     const winRate = settled.length ? (wins.length / settled.length) * 100 : 0;
-    return { total: transactions.length, wins: wins.length, losses: losses.length, pending: pending.length, totalProfit, winRate };
+    return { total: txs.length, wins: wins.length, losses: losses.length, pending: pending.length, totalProfit, winRate };
   }, [transactions]);
 
   const headingColor = isDark ? 'text-white' : 'text-[#1a2a4a]';
