@@ -26,6 +26,7 @@ import {
   SignalHigh,
 } from 'lucide-react';
 import { useDerivTicks, useActiveSymbols, type SymbolInfo } from '@/hooks/useDerivTicks';
+import { LoadingScreen } from '@/components/LoadingScreen';
 import { useDerivAuth, type Account, type AccountInfo } from '@/hooks/useDerivAuth';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useTheme } from '@/hooks/useTheme';
@@ -95,6 +96,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [fetchCount, setFetchCount] = useState(1000);
+  const [appLoaded, setAppLoaded] = useState(false);
   const { digits, quotes, currentDigit, currentQuote, status, tickCount, historyLoading, fetchHistory } = useDerivTicks(symbol);
   const { symbols, loading: symbolsLoading } = useActiveSymbols();
   const { account, accounts, loading: authLoading, error: authError, loginWithOAuth, logout, selectAccount, refreshBalance, placeTrade: rawPlaceTrade, watchContract } = useDerivAuth();
@@ -199,12 +201,17 @@ export default function App() {
   const headerTextMuted = isDark ? 'text-slate-400' : 'text-[#7a8aaa]';
 
   return (
-    <div className="bg-app">
-      <div className="blob blob-1" />
-      <div className="blob blob-2" />
-      <div className="blob blob-3" />
+    <>
+      <LoadingScreen onComplete={() => setAppLoaded(true)} />
+      
+      <div className={cn("bg-app transition-all duration-[1200ms] ease-[cubic-bezier(0.16,1,0.3,1)]", 
+        !appLoaded ? 'scale-95 opacity-0 blur-sm pointer-events-none' : 'scale-100 opacity-100 blur-0'
+      )}>
+        <div className="blob blob-1" />
+        <div className="blob blob-2" />
+        <div className="blob blob-3" />
 
-      <div className="relative z-10">
+        <div className="relative z-10">
         {/* ── Header ── */}
         <header className={cn('sticky top-0 z-30 w-full border-b transition-colors', isDark ? 'bg-[#0b141e] border-white/5' : 'bg-white border-blue-100')}>
           <div className="w-full">
@@ -449,8 +456,6 @@ export default function App() {
           </div>
         </header>
 
-        {/* Redundant landing page accounts cards removed. Using header accounts dropdown instead. */}
-
         {/* ── Tab Navigation ── */}
         <nav className={cn('sticky top-[56px] z-20 w-full border-b transition-colors', isDark ? 'bg-[#111736] border-white/5' : 'bg-blue-50 border-blue-100')}>
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -649,6 +654,7 @@ export default function App() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }

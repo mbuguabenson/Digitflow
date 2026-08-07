@@ -221,7 +221,7 @@ export function TransactionCard({
                               <span>·</span>
                               <span>{tx.duration}{tx.durationUnit === 't' ? ' ticks' : tx.durationUnit === 'm' ? ' min' : ' sec'}</span>
                               <span>·</span>
-                              <span>{tx.amount.toFixed(2)} stake</span>
+                              <span>{(tx.amount || 0).toFixed(2)} stake</span>
                             </div>
                           </div>
                         </div>
@@ -233,7 +233,7 @@ export function TransactionCard({
                             isPending ? (isDark ? 'text-slate-400' : 'text-[#7a8aaa]')
                             : (tx.profit ?? 0) >= 0 ? 'text-emerald-500' : 'text-red-500'
                           )}>
-                            {isPending ? '--' : formatProfit(tx.profit, 'USD')}
+                            {isPending ? '--' : formatProfit(tx.profit || 0, 'USD')}
                           </div>
                           <div className={cn(
                             'text-[10px] font-bold uppercase tracking-wide',

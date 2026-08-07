@@ -380,3 +380,65 @@ html.dark .ticker-item {
   border-color: var(--accent);
 }
 .df-input::placeholder { color: var(--text-muted); }
+
+/* -- Liquid Loader Animation -- */
+.liquid-loader-container {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  filter: url('#liquid-filter');
+}
+
+.liquid-drop {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--blue-500);
+}
+
+.drop-1 {
+  width: 40px;
+  height: 40px;
+  animation: liquid-bounce 2s ease-in-out infinite;
+}
+
+.drop-2 {
+  width: 30px;
+  height: 30px;
+  animation: liquid-orbit 2.5s linear infinite;
+}
+
+.drop-3 {
+  width: 25px;
+  height: 25px;
+  animation: liquid-orbit-reverse 3s linear infinite;
+}
+
+.drop-4 {
+  width: 45px;
+  height: 45px;
+  animation: liquid-pulse 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes liquid-bounce {
+  0%, 100% { transform: translate(-50%, -80%); }
+  50% { transform: translate(-50%, 0%); }
+}
+
+@keyframes liquid-orbit {
+  0% { transform: translate(-50%, -50%) rotate(0deg) translateX(30px) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg) translateX(30px) rotate(-360deg); }
+}
+
+@keyframes liquid-orbit-reverse {
+  0% { transform: translate(-50%, -50%) rotate(360deg) translateX(40px) rotate(-360deg); }
+  100% { transform: translate(-50%, -50%) rotate(0deg) translateX(40px) rotate(0deg); }
+}
+
+@keyframes liquid-pulse {
+  0% { transform: translate(-50%, -50%) scale(0.8); }
+  100% { transform: translate(-50%, -50%) scale(1.2); }
+}
+

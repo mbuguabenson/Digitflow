@@ -269,7 +269,6 @@ function TradingConsole({
     setTransactions(prev => [{ ...t, id: Math.random().toString(36).slice(2), time: new Date().toLocaleTimeString() }, ...prev].slice(0, 100));
   }, []);
 
-  // Handles trade result from watchContract callback
   const handleTradeResult = useCallback((isWin: boolean, profit: number, tradeStake: number) => {
     if (isWin) {
       lossRef.current = 0;
@@ -346,6 +345,12 @@ function TradingConsole({
         stakeRef.current = parseFloat((tradeStake * martingaleMult).toFixed(2));
         setCurrentStake(stakeRef.current);
       }
+      placingRef.current = false;
+      setTradeLoading(false);
+      return false;
+    }
+    } catch (error) {
+      console.error("Trade execution error:", error);
       placingRef.current = false;
       setTradeLoading(false);
       return false;
@@ -562,7 +567,7 @@ function TradingConsole({
                   <td className={cn('px-2 py-1.5', isDark ? 'text-slate-400' : 'text-gray-500')}>{t.time}</td>
                   <td className={cn('px-2 py-1.5 font-semibold', isDark ? 'text-slate-300' : 'text-gray-700')}>{t.symbol}</td>
                   <td className={cn('px-2 py-1.5', isDark ? 'text-slate-300' : 'text-gray-700')}>{t.side}</td>
-                  <td className={cn('px-2 py-1.5 text-right tabular-nums', isDark ? 'text-slate-300' : 'text-gray-700')}>{t.stake.toFixed(2)}</td>
+                  <td className={cn('px-2 py-1.5 text-right tabular-nums', isDark ? 'text-slate-300' : 'text-gray-700')}>{(t.stake || 0).toFixed(2)}</td>
                   <td className="px-2 py-1.5 text-center">
                     <span className={cn('rounded-full px-2 py-0.5 text-[9px] font-bold uppercase',
                       t.result === 'win' ? 'bg-green-500/20 text-green-400' :
@@ -572,7 +577,7 @@ function TradingConsole({
                   </td>
                   <td className={cn('px-2 py-1.5 text-right tabular-nums font-bold',
                     t.profit > 0 ? 'text-green-500' : t.profit < 0 ? 'text-red-500' : isDark ? 'text-slate-400' : 'text-gray-400')}>
-                    {t.profit > 0 ? '+' : ''}{t.profit.toFixed(2)}
+                    {(t.profit || 0) > 0 ? '+' : ''}{(t.profit || 0).toFixed(2)}
                   </td>
                 </tr>
               ))}
@@ -658,13 +663,14 @@ function HourlySubTab({ account, placeTrade, watchContract, refreshBalance, isDa
   }, []);
 
   const executeHourlyTrade = useCallback(async () => {
-    if (!account) { onLoginRequest(); return; }
-    if (placingRef.current) return; // Prevent duplicate trades
-    placingRef.current = true;
-    setTradeLoading(true);
-    const contractType = tradeType === 'over' ? 'DIGITOVER' : 'DIGITUNDER';
-    const tradeStake = stakeRef.current;
-    const result = await placeTrade({
+    try {
+      if (!account) { onLoginRequest(); return; }
+      if (placingRef.current) return; // Prevent duplicate trades
+      placingRef.current = true;
+      setTradeLoading(true);
+      const contractType = tradeType === 'over' ? 'DIGITOVER' : 'DIGITUNDER';
+      const tradeStake = stakeRef.current;
+      const result = await placeTrade({
       symbol: 'R_100', contractType, barrier,
       amount: tradeStake, duration: 1, durationUnit: 't', basis: 'stake',
     });
@@ -711,7 +717,11 @@ function HourlySubTab({ account, placeTrade, watchContract, refreshBalance, isDa
         stakeRef.current = parseFloat((tradeStake * martingaleMult).toFixed(2));
         setCurrentStake(stakeRef.current);
       }
-      if (lossRef.current >= 5) { setAutoRun(false); autoRunRef.current = false; }
+      placingRef.current = false;
+      setTradeLoading(false);
+    }
+    } catch (error) {
+      console.error("Hourly trade execution error:", error);
       placingRef.current = false;
       setTradeLoading(false);
     }
