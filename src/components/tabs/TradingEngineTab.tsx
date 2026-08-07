@@ -349,6 +349,7 @@ function TradingConsole({
       placingRef.current = false;
       setTradeLoading(false);
       return false;
+    }
     } catch (error) {
       console.error("Trade execution error:", error);
       placingRef.current = false;
