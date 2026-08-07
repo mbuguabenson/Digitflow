@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef, Fragment } from 'react';
 import {
   Target, Calendar, TrendingUp, TrendingDown, DollarSign, Percent,
   Play, Pause, Square, RefreshCw, Download, FileText, Printer,
@@ -11,6 +11,10 @@ import {
   calculateChallenge, recommendedStake, defaultConfig, formatCurrency,
 } from '@/lib/challenge';
 import { type StrategyId, STRATEGIES, calcAutoStake, strategyToContract } from '@/lib/trading-engine';
+import { 
+  analyzeOverUnder, analyzeEvenOdd, analyzeDiffers, evaluateMarkets,
+  type StrategyType, type AutotraderSignal 
+} from '@/lib/autotrader-engine';
 import { exportExcel, exportPDF, printChallenge } from '@/lib/challengeExport';
 import { useChallengeStore } from '@/hooks/useChallengeStore';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -25,6 +29,8 @@ type Props = {
     symbol: string; contractType: string; barrier?: string;
     amount: number; duration: number; durationUnit: string; basis?: string;
   }) => Promise<TradeResult>;
+  watchContract?: (contractId: string, onUpdate: (data: Record<string, unknown>) => void) => () => void;
+  digits: number[];
   isDark: boolean;
   onLoginRequest: () => void;
 };
@@ -234,7 +240,7 @@ function Field({
 }
 
 // ─── Main Component ──────────────────────────────────────────────────────────
-export function CompoundingChallengeTab({ symbol, account, placeTrade, isDark, onLoginRequest }: Props) {
+export function CompoundingChallengeTab({ symbol, account, placeTrade, watchContract, digits, isDark, onLoginRequest }: Props) {
   const { challenges, save, remove, loadAll } = useChallengeStore();
   const { notifications, notify, dismiss } = useNotifications();
   const [config, setConfig] = useState<ChallengeConfig>(defaultConfig());
@@ -242,6 +248,7 @@ export function CompoundingChallengeTab({ symbol, account, placeTrade, isDark, o
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [botState, setBotState] = useState<'IDLE' | 'SCANNING' | 'TRADING' | 'COOLDOWN'>('IDLE');
   const [autoTrading, setAutoTrading] = useState(false);
   const [autoPaused, setAutoPaused] = useState(false);
   const [tradeLoading, setTradeLoading] = useState(false);
@@ -379,16 +386,19 @@ export function CompoundingChallengeTab({ symbol, account, placeTrade, isDark, o
     setAutoTrading(true);
     setAutoPaused(false);
     autoRef.current = true;
+    setBotState('SCANNING');
     notify('success', 'Auto trading started');
   }, [account, challenge, notify, onLoginRequest]);
 
   const pauseAutoTrading = useCallback(() => {
     setAutoPaused(true);
+    setBotState('IDLE');
     notify('warning', 'Auto trading paused');
   }, [notify]);
 
   const resumeAutoTrading = useCallback(() => {
     setAutoPaused(false);
+    setBotState('SCANNING');
     notify('success', 'Auto trading resumed');
   }, [notify]);
 
@@ -396,13 +406,15 @@ export function CompoundingChallengeTab({ symbol, account, placeTrade, isDark, o
     setAutoTrading(false);
     setAutoPaused(false);
     autoRef.current = false;
+    setBotState('IDLE');
     notify('warning', 'Auto trading stopped');
   }, [notify]);
 
   // Auto trade execution loop
   useEffect(() => {
-    if (!autoTrading || autoPaused || !account || !challenge || tradeLoading) return;
-    const stake = recommendedStake(account.balance, config.riskPerTrade);
+    if (!autoTrading || autoPaused || !account || !challenge || botState !== 'SCANNING' || tradeLoading) return;
+    
+    // Check if daily target reached
     const today = new Date().toISOString().split('T')[0];
     const dayIdx = challenge.days.findIndex(d => d.date === today);
     if (dayIdx < 0) return;
@@ -418,25 +430,68 @@ export function CompoundingChallengeTab({ symbol, account, placeTrade, isDark, o
       notify('success', `Session ${sessionIdx + 1} completed`);
       return;
     }
-    // Place a trade using selected strategy
+
+    // Wait for enough ticks
+    if (!digits || digits.length < 60) return;
+
+    // Generate signal
+    let signal: AutotraderSignal | null = null;
+    if (selectedStrategy === 'over-under') signal = analyzeOverUnder(digits, digits, symbol);
+    else if (selectedStrategy === 'even-odd') signal = analyzeEvenOdd(digits, digits, symbol);
+    else if (selectedStrategy === 'differs') signal = analyzeDiffers(digits, symbol);
+    
+    if (!signal || signal.action !== 'TRADE') return;
+
+    // Execute trade
+    const stake = recommendedStake(account.balance, config.riskPerTrade);
+    setBotState('TRADING');
+    setTradeLoading(true);
+
     const go = async () => {
-      setTradeLoading(true);
-      const { contractType, barrier } = strategyToContract(selectedStrategy, 'Over', undefined, selectedStrategy === 'over-under' ? '5' : undefined);
       const result = await placeTrade({
-        symbol, contractType, barrier,
-        amount: stake, duration: 1, durationUnit: 't', basis: 'stake',
+        symbol,
+        contractType: signal!.contractType!,
+        barrier: signal!.barrier?.toString(),
+        amount: stake,
+        duration: 1,
+        durationUnit: 't',
+        basis: 'stake',
       });
-      setTradeLoading(false);
-      if (result.success) {
-        notify('success', `Trade placed: ${formatCurrency(stake, config.currency)} (${STRATEGIES.find(s => s.id === selectedStrategy)?.label})`);
+      
+      if (result.success && result.contractId) {
+        notify('success', `Trade placed: ${formatCurrency(stake, config.currency)} (${signal!.strategy})`);
+        
+        if (watchContract) {
+          const unwatch = watchContract(result.contractId, (data) => {
+            const poc = (data as any).proposal_open_contract;
+            if (poc && (poc.is_sold === 1 || poc.status === 'won' || poc.status === 'lost')) {
+              unwatch();
+              setTradeLoading(false);
+              setBotState('COOLDOWN');
+              setTimeout(() => {
+                if (autoRef.current && !autoPaused) setBotState('SCANNING');
+              }, 2000); // 2 second cooldown
+            }
+          });
+        } else {
+          setTradeLoading(false);
+          setBotState('COOLDOWN');
+          setTimeout(() => {
+            if (autoRef.current && !autoPaused) setBotState('SCANNING');
+          }, 2000);
+        }
       } else {
         notify('error', `Trade failed: ${result.error}`);
+        setTradeLoading(false);
+        setBotState('COOLDOWN');
+        setTimeout(() => {
+          if (autoRef.current && !autoPaused) setBotState('SCANNING');
+        }, 3000);
       }
     };
     go();
-    // Only fire once per tick cycle
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoTrading, autoPaused, account?.balance, challenge, tradeLoading]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoTrading, autoPaused, account?.balance, challenge, tradeLoading, botState, digits, symbol, selectedStrategy]);
 
   const stake = account ? recommendedStake(account.balance, config.riskPerTrade) : 0;
 
@@ -822,7 +877,7 @@ export function CompoundingChallengeTab({ symbol, account, placeTrade, isDark, o
             </thead>
             <tbody>
               {days.map(d => (
-                <>
+                <Fragment key={d.day}>
                   <tr key={d.day} className={cn('border-b cursor-pointer hover:bg-white/5', isDark ? 'border-white/5' : 'border-gray-100')}
                     onClick={() => setExpandedDay(expandedDay === d.day ? null : d.day)}>
                     <td className="px-3 py-2">
@@ -910,7 +965,7 @@ export function CompoundingChallengeTab({ symbol, account, placeTrade, isDark, o
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>

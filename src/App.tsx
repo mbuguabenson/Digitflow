@@ -23,6 +23,7 @@ import {
   Layers,
   Zap,
   Download,
+  SignalHigh,
 } from 'lucide-react';
 import { useDerivTicks, useActiveSymbols, type SymbolInfo } from '@/hooks/useDerivTicks';
 import { useDerivAuth, type Account, type AccountInfo } from '@/hooks/useDerivAuth';
@@ -93,6 +94,7 @@ export default function App() {
   const [ticksOpen, setTicksOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [fetchCount, setFetchCount] = useState(1000);
   const { digits, quotes, currentDigit, currentQuote, status, tickCount, historyLoading, fetchHistory } = useDerivTicks(symbol);
   const { symbols, loading: symbolsLoading } = useActiveSymbols();
   const { account, accounts, loading: authLoading, error: authError, loginWithOAuth, logout, selectAccount, refreshBalance, placeTrade: rawPlaceTrade, watchContract } = useDerivAuth();
@@ -126,7 +128,7 @@ export default function App() {
 
   const statusInfo = {
     connecting: { label: 'Connecting', icon: Loader2, color: '#eab308', spin: true },
-    open: { label: 'Live', icon: Wifi, color: '#22c55e', spin: false },
+    open: { label: 'Live', icon: SignalHigh, color: '#22c55e', spin: false },
     closed: { label: 'Disconnected', icon: WifiOff, color: '#ef4444', spin: false },
     error: { label: 'Error', icon: WifiOff, color: '#ef4444', spin: false },
   }[status];
@@ -169,10 +171,10 @@ export default function App() {
     if (!syms.length) return new Map<string, SymbolInfo[]>();
     const filtered = searchQuery.trim()
       ? syms.filter((s) =>
-          s?.display_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          s?.symbol?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (MARKET_LABELS[s.market] ?? s?.market)?.toLowerCase().includes(searchQuery.toLowerCase())
-        )
+        s?.display_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s?.symbol?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (MARKET_LABELS[s.market] ?? s?.market)?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
       : syms;
     return groupSymbolsByMarket(filtered);
   }, [symbols, searchQuery]);
@@ -204,11 +206,11 @@ export default function App() {
 
       <div className="relative z-10">
         {/* ── Header ── */}
-        <header className="sticky top-0 z-30">
-          <div className="glass-static rounded-none border-x-0 border-t-0">
+        <header className={cn('sticky top-0 z-30 w-full border-b transition-colors', isDark ? 'bg-[#0b141e] border-white/5' : 'bg-white border-blue-100')}>
+          <div className="w-full">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               {/* Top row */}
-              <div className="flex h-[68px] items-center justify-between">
+              <div className="flex h-[56px] items-center justify-between">
                 {/* Logo text */}
                 <div>
                   <h1 className={cn('text-[19px] font-bold leading-tight', headerTextPrimary)}>
@@ -217,8 +219,8 @@ export default function App() {
                   <p className={cn('text-[11px] font-medium', headerTextMuted)}>Deriv Tick Analyzer</p>
                 </div>
 
-                {/* Right controls: Market | Price | Last Digit | Ticks | Live | Modes | Login */}
-                <div className="flex items-center gap-2.5">
+                {/* Right controls */}
+                <div className="flex items-center gap-2 justify-end flex-1 pl-4">
                   {/* Market dropdown */}
                   <div className="relative" onClick={(e) => e.stopPropagation()}>
                     <button
@@ -297,26 +299,20 @@ export default function App() {
                     )}
                   </div>
 
-                  {/* Price */}
+                  {/* Price & Last Digit Combined */}
                   <div className={cn(
-                    'hidden items-center gap-1.5 rounded-full px-3 py-1.5 backdrop-blur-md border sm:flex',
+                    'hidden sm:flex items-center gap-2 rounded-full pl-3 pr-1 py-1 border',
                     isDark ? 'bg-white/5 border-white/10' : 'bg-white/60 border-blue-200/40'
                   )}>
                     <span className={cn('text-[11px] font-semibold', headerTextMuted)}>Price</span>
-                    <span className={cn('font-mono text-sm font-bold', headerTextPrimary)}>
-                      {currentQuote.toFixed(4)}
-                    </span>
-                  </div>
-
-                  {/* Last Digit */}
-                  <div className={cn(
-                    'flex items-center gap-2 rounded-full px-3 py-1.5 border',
-                    isDark ? 'bg-blue-500/10 border-blue-400/20' : 'bg-gradient-to-r from-blue-500/15 to-cyan-400/15 border-blue-200/40'
-                  )}>
-                    <span className={cn('text-[11px] font-semibold', headerTextMuted)}>Last</span>
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 text-sm font-bold text-white shadow-md shadow-blue-500/30">
-                      {currentDigit}
-                    </span>
+                    <div className="flex items-center">
+                      <span className={cn('font-mono text-sm font-bold mr-2', headerTextPrimary)}>
+                        {parseFloat(currentQuote.toFixed(4))}
+                      </span>
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-base font-bold text-white shadow-lg shadow-orange-500/40">
+                        {currentDigit}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Ticks drawer toggle */}
@@ -338,7 +334,7 @@ export default function App() {
 
                   {/* Live status pill */}
                   <div className={cn(
-                    'flex items-center gap-2 rounded-full px-3 py-1.5 backdrop-blur-md border',
+                    'hidden md:flex items-center gap-2 rounded-full px-3 py-1.5 border',
                     isDark ? 'bg-white/5 border-white/10' : 'bg-white/60 border-blue-200/40'
                   )}>
                     <StatusIcon className="h-3.5 w-3.5" style={{ color: statusInfo.color }} />
@@ -395,7 +391,7 @@ export default function App() {
                 <div className="flex flex-wrap items-center gap-2 pb-3 pt-1">
                   <div className={cn('flex items-center gap-1.5 text-xs font-semibold', headerTextMuted)}>
                     <span className="live-dot" />
-                    TICKS
+                    TICKS ({digits.length})
                   </div>
                   <div ref={tickerRef} className="flex flex-1 items-center gap-1.5 overflow-hidden min-w-[200px]">
                     {tickerDigits.length === 0 && (
@@ -410,33 +406,40 @@ export default function App() {
                       </div>
                     ))}
                   </div>
-                  {/* History fetch buttons */}
+                  {/* History fetch dropdown */}
                   <div className="flex items-center gap-1">
-                    <span className={cn('text-[10px] font-semibold mr-1', headerTextMuted)}>Fetch</span>
-                    {[5000, 1000, 250, 120, 60, 25].map((n) => (
-                      <button
-                        key={n}
-                        onClick={() => fetchHistory(n)}
-                        disabled={historyLoading}
-                        className={cn(
-                          'flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold transition-all border',
-                          historyLoading
-                            ? 'opacity-50 cursor-wait'
-                            : isDark
-                              ? 'bg-white/5 border-white/10 text-slate-300 hover:bg-blue-500/20 hover:border-blue-400/40'
-                              : 'bg-white/60 border-blue-200/40 text-[#3a4a6a] hover:bg-blue-500/15 hover:border-blue-400/40'
-                        )}
-                      >
-                        {historyLoading ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Download className="h-2.5 w-2.5" />}
-                        {n}
-                      </button>
-                    ))}
+                    <select
+                      value={fetchCount}
+                      onChange={(e) => setFetchCount(Number(e.target.value))}
+                      disabled={historyLoading}
+                      className={cn(
+                        'rounded border px-1.5 py-1 text-xs outline-none font-semibold transition-colors cursor-pointer',
+                        isDark ? 'bg-white/10 border-white/20 text-slate-200' : 'bg-white/80 border-blue-200/60 text-[#3a4a6a]'
+                      )}
+                    >
+                      {[25, 50, 100, 250, 500, 1000, 5000].map(n => <option key={n} value={n}>{n} Ticks</option>)}
+                    </select>
+                    <button
+                      onClick={() => fetchHistory(fetchCount)}
+                      disabled={historyLoading || digits.length >= fetchCount}
+                      className={cn(
+                        'flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold transition-all border',
+                        historyLoading || digits.length >= fetchCount
+                          ? 'opacity-50 cursor-not-allowed'
+                          : isDark
+                            ? 'bg-blue-500/20 border-blue-400/40 text-blue-300 hover:bg-blue-500/30'
+                            : 'bg-blue-500/10 border-blue-400/50 text-blue-700 hover:bg-blue-500/20'
+                      )}
+                    >
+                      {historyLoading ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Download className="h-2.5 w-2.5" />}
+                      Fetch
+                    </button>
                   </div>
                   <div className="flex items-center gap-3 text-xs">
                     <div className="flex items-center gap-1">
                       <span className={headerTextMuted}>Quote</span>
                       <span className={cn('font-mono font-bold', headerTextPrimary)}>
-                        {currentQuote.toFixed(4)}
+                        {parseFloat(currentQuote.toFixed(4))}
                       </span>
                     </div>
                   </div>
@@ -449,9 +452,9 @@ export default function App() {
         {/* Redundant landing page accounts cards removed. Using header accounts dropdown instead. */}
 
         {/* ── Tab Navigation ── */}
-        <nav className="sticky top-[122px] z-20">
+        <nav className={cn('sticky top-[56px] z-20 w-full border-b transition-colors', isDark ? 'bg-[#111736] border-white/5' : 'bg-blue-50 border-blue-100')}>
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div ref={scrollContainerRef} className="flex gap-2 overflow-x-auto py-3">
+            <div ref={scrollContainerRef} className="flex gap-2 overflow-x-auto py-3 px-4 justify-center">
               {TABS.map((tab) => {
                 const Icon = tab.icon;
                 const active = activeTab === tab.id;
@@ -461,7 +464,7 @@ export default function App() {
                     ref={active ? activeTabRef : null}
                     onClick={() => setActiveTab(tab.id)}
                     className={cn(
-                      'flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-all',
+                      'flex items-center gap-2 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-semibold transition-all',
                       active ? 'tab-active' : 'tab-inactive'
                     )}
                   >
@@ -475,7 +478,7 @@ export default function App() {
         </nav>
 
         {/* ── Main Content ── */}
-        <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 w-full">
           {digits.length < 10 && status === 'open' ? (
             <div className="flex flex-col items-center justify-center py-24">
               <div className="relative">
@@ -495,78 +498,80 @@ export default function App() {
             </div>
           ) : (
             <>
-            <div key={activeTab} className="fade-up">
-              {activeTab === 'over-under' && (
-                <OverUnderTab
-                  digits={digits}
-                  currentDigit={currentDigit}
-                  symbol={symbol}
-                  account={account}
-                  placeTrade={placeTrade}
-                  isDark={isDark}
-                />
-              )}
-              {activeTab === 'matches' && <MatchesTab digits={digits} currentDigit={currentDigit} />}
-              {activeTab === 'even-odd' && <EvenOddTab digits={digits} currentDigit={currentDigit} />}
-              {activeTab === 'differs' && <DiffersTab digits={digits} currentDigit={currentDigit} />}
-              {activeTab === 'ai' && <AIAnalysisTab digits={digits} currentDigit={currentDigit} />}
-              {activeTab === 'challenge' && (
-                <CompoundingChallengeTab
-                  symbol={symbol}
-                  account={account}
-                  placeTrade={placeTrade}
-                  isDark={isDark}
-                  onLoginRequest={() => setShowLoginModal(true)}
-                />
-              )}
-              {activeTab === 'smart-trading' && (
-                <SmartTradingTab
-                  digits={digits}
-                  currentDigit={currentDigit}
-                  currentQuote={currentQuote}
-                  symbol={symbol}
-                  account={account}
-                  placeTrade={placeTrade}
-                  watchContract={watchContract}
-                  refreshBalance={refreshBalance}
-                  isDark={isDark}
-                  onLoginRequest={() => setShowLoginModal(true)}
-                />
-              )}
-              {activeTab === 'signals' && (
-                <SignalsTab
-                  digits={digits}
-                  quotes={quotes}
-                  currentDigit={currentDigit}
-                  isDark={isDark}
-                />
-              )}
-              {activeTab === 'smart' && <SmartAnalysisTab digits={digits} currentDigit={currentDigit} isDark={isDark} />}
-              {activeTab === 'engine' && (
-                <TradingEngineTab
-                  account={account}
-                  placeTrade={placeTrade}
-                  watchContract={watchContract}
-                  refreshBalance={refreshBalance}
-                  isDark={isDark}
-                  onLoginRequest={() => setShowLoginModal(true)}
-                />
-              )}
-              {activeTab === 'autotrader' && (
-                <AutotraderTab
-                  account={account}
-                  placeTrade={placeTrade}
-                  watchContract={watchContract}
-                  refreshBalance={refreshBalance}
-                  isDark={isDark}
-                  onLoginRequest={() => setShowLoginModal(true)}
-                />
-              )}
-            </div>
+              <div key={activeTab} className="fade-up">
+                {activeTab === 'over-under' && (
+                  <OverUnderTab
+                    digits={digits}
+                    currentDigit={currentDigit}
+                    symbol={symbol}
+                    account={account}
+                    placeTrade={placeTrade}
+                    isDark={isDark}
+                  />
+                )}
+                {activeTab === 'matches' && <MatchesTab digits={digits} currentDigit={currentDigit} />}
+                {activeTab === 'even-odd' && <EvenOddTab digits={digits} currentDigit={currentDigit} />}
+                {activeTab === 'differs' && <DiffersTab digits={digits} currentDigit={currentDigit} />}
+                {activeTab === 'ai' && <AIAnalysisTab digits={digits} currentDigit={currentDigit} />}
+                {activeTab === 'challenge' && (
+                  <CompoundingChallengeTab
+                    symbol={symbol}
+                    account={account}
+                    placeTrade={placeTrade}
+                    watchContract={watchContract}
+                    digits={digits}
+                    isDark={isDark}
+                    onLoginRequest={() => setShowLoginModal(true)}
+                  />
+                )}
+                {activeTab === 'smart-trading' && (
+                  <SmartTradingTab
+                    digits={digits}
+                    currentDigit={currentDigit}
+                    currentQuote={currentQuote}
+                    symbol={symbol}
+                    account={account}
+                    placeTrade={placeTrade}
+                    watchContract={watchContract}
+                    refreshBalance={refreshBalance}
+                    isDark={isDark}
+                    onLoginRequest={() => setShowLoginModal(true)}
+                  />
+                )}
+                {activeTab === 'signals' && (
+                  <SignalsTab
+                    digits={digits}
+                    quotes={quotes}
+                    currentDigit={currentDigit}
+                    isDark={isDark}
+                  />
+                )}
+                {activeTab === 'smart' && <SmartAnalysisTab digits={digits} currentDigit={currentDigit} isDark={isDark} />}
+                {activeTab === 'engine' && (
+                  <TradingEngineTab
+                    account={account}
+                    placeTrade={placeTrade}
+                    watchContract={watchContract}
+                    refreshBalance={refreshBalance}
+                    isDark={isDark}
+                    onLoginRequest={() => setShowLoginModal(true)}
+                  />
+                )}
+                {activeTab === 'autotrader' && (
+                  <AutotraderTab
+                    account={account}
+                    placeTrade={placeTrade}
+                    watchContract={watchContract}
+                    refreshBalance={refreshBalance}
+                    isDark={isDark}
+                    onLoginRequest={() => setShowLoginModal(true)}
+                  />
+                )}
+              </div>
 
-            <div className="mt-6">
-              <TransactionCard transactions={transactions} isDark={isDark} onClear={clearTransactions} />
-            </div>
+              <div className="mt-6">
+                <TransactionCard transactions={transactions} isDark={isDark} onClear={clearTransactions} />
+              </div>
             </>
           )}
         </main>

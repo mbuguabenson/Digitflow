@@ -39,7 +39,7 @@ let activeAccountId: string | null = null;
 const pending = new Map<number, PendingRequest>();
 const listeners = new Set<(account: Account | null) => void>();
 const accountListListeners = new Set<(accounts: AccountInfo[]) => void>();
-const contractSubs = new Map<string, (data: Record<string, unknown>) => void>();
+const contractSubs = new Map<string, Set<(data: Record<string, unknown>) => void>>();
 
 function nextReqId() {
   reqIdCounter += 1;
@@ -82,6 +82,15 @@ function connectWsForAccount(accountId: string, token: string, setAccounts: Reac
       wsInstance = ws;
 
       ws.onopen = () => {
+        const pingInterval = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ ping: 1 }));
+          }
+        }, 30000);
+        
+        // Save interval so we can clear it
+        (ws as any)._pingInterval = pingInterval;
+
         // Subscribe to balance updates
         ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
         
@@ -109,7 +118,7 @@ function connectWsForAccount(accountId: string, token: string, setAccounts: Reac
                 loginid: bal.loginid as string,
                 currency: bal.currency as string,
                 balance: bal.balance as number,
-                isVirtual: bal.loginid.startsWith('VR') || bal.loginid.startsWith('VRTC'),
+                isVirtual: String(bal.loginid).startsWith('VR'),
               };
               listeners.forEach((fn) => fn(updatedAccount));
               
@@ -130,7 +139,7 @@ function connectWsForAccount(accountId: string, token: string, setAccounts: Reac
             const poc = data.proposal_open_contract as any | undefined;
             const cid = poc?.contract_id as string | number | undefined;
             if (cid && contractSubs.has(String(cid))) {
-              contractSubs.get(String(cid))!(data);
+              contractSubs.get(String(cid))!.forEach(fn => fn(data));
             }
           }
 
@@ -146,6 +155,9 @@ function connectWsForAccount(accountId: string, token: string, setAccounts: Reac
       };
 
       ws.onclose = () => {
+        if ((ws as any)._pingInterval) {
+          clearInterval((ws as any)._pingInterval);
+        }
         if (activeAccountId === accountId && authToken) {
           setTimeout(() => {
             if (activeAccountId === accountId && authToken) {
@@ -246,7 +258,7 @@ export function useDerivAuth() {
         loginid: a.account_id,
         currency: a.currency,
         balance: a.balance || 0,
-        isVirtual: a.account_type === 'demo' || a.account_id.startsWith('VR') || a.account_id.startsWith('VRTC'),
+        isVirtual: a.account_type === 'demo' || String(a.account_id).startsWith('VR'),
         isActive: a.status === 'active',
       }));
 
@@ -346,7 +358,7 @@ export function useDerivAuth() {
             loginid: activeRaw.account_id,
             currency: activeRaw.currency,
             balance: activeRaw.balance || 0,
-            isVirtual: activeRaw.account_type === 'demo' || activeRaw.account_id.startsWith('VR') || activeRaw.account_id.startsWith('VRTC'),
+            isVirtual: activeRaw.account_type === 'demo' || String(activeRaw.account_id).startsWith('VR'),
           };
           setAccount(updatedAccount);
           listeners.forEach((fn) => fn(updatedAccount));
@@ -406,7 +418,10 @@ export function useDerivAuth() {
   }, [account]);
 
   const watchContract = useCallback((contractId: string, onUpdate: (data: Record<string, unknown>) => void) => {
-    contractSubs.set(contractId, onUpdate);
+    if (!contractSubs.has(contractId)) {
+      contractSubs.set(contractId, new Set());
+    }
+    contractSubs.get(contractId)!.add(onUpdate);
     ensureWs().then((ws) => {
       ws.send(JSON.stringify({
         proposal_open_contract: 1,
@@ -416,7 +431,13 @@ export function useDerivAuth() {
       }));
     });
     return () => {
-      contractSubs.delete(contractId);
+      const subs = contractSubs.get(contractId);
+      if (subs) {
+        subs.delete(onUpdate);
+        if (subs.size === 0) {
+          contractSubs.delete(contractId);
+        }
+      }
     };
   }, []);
 

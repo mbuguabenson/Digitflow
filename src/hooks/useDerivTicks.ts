@@ -70,7 +70,11 @@ export async function fetchActiveSymbols(): Promise<SymbolInfo[]> {
         if (data.msg_type === 'active_symbols' && Array.isArray(data.active_symbols)) {
           clearTimeout(timeout);
           const symbols: SymbolInfo[] = data.active_symbols
-            .filter((s: Record<string, unknown>) => s && typeof s.underlying_symbol === 'string')
+            .filter((s: Record<string, unknown>) => {
+              if (!s || typeof s.underlying_symbol !== 'string') return false;
+              const name = (s.underlying_symbol_name as string || '').toLowerCase();
+              return name.includes('volatility') || name.includes('jump');
+            })
             .map((s: Record<string, unknown>) => {
               const sym = s.underlying_symbol as string;
               const ps = (s.pip_size as number) ?? 4;
@@ -152,7 +156,6 @@ export function useDerivTicks(symbol: string, maxDigits = 1000) {
       end: 'latest',
       count,
       style: 'ticks',
-      subscribe: 0,
       req_id: reqId,
     }));
   }, [symbol]);
@@ -197,8 +200,13 @@ export function useDerivTicks(symbol: string, maxDigits = 1000) {
           const data = JSON.parse(raw);
 
           if (data.error) {
-            setStatus('error');
-            if (data.req_id === historyReqRef.current) setHistoryLoading(false);
+            if (data.req_id === historyReqRef.current) {
+              setHistoryLoading(false);
+              historyReqRef.current = null;
+              console.error("History fetch error:", data.error.message);
+            } else {
+              setStatus('error');
+            }
             return;
           }
 
@@ -290,7 +298,13 @@ export function useDerivTicks(symbol: string, maxDigits = 1000) {
         if (subIdRef.current && wsRef.current.readyState === WebSocket.OPEN) {
           wsRef.current.send(JSON.stringify({ forget: subIdRef.current }));
         }
-        wsRef.current.close();
+        if (wsRef.current.readyState === WebSocket.CONNECTING) {
+          wsRef.current.onopen = () => {
+            if (wsRef.current) wsRef.current.close();
+          };
+        } else {
+          wsRef.current.close();
+        }
         wsRef.current = null;
       }
       subIdRef.current = null;

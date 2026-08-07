@@ -52,7 +52,7 @@ body {
   background: linear-gradient(145deg, #e8ecfc 0%, #eef1fb 40%, #e4eeff 100%);
   min-height: 100vh;
   position: relative;
-  overflow-x: hidden;
+  overflow-x: clip;
   transition: background 0.3s ease;
 }
 html.dark .bg-app {
@@ -164,26 +164,31 @@ html.dark .gradient-text {
   background-clip: text;
 }
 
-/* ── Glow pill for active tab ── */
+/* ── Tab styling ── */
 .tab-active {
-  background: linear-gradient(135deg, #3b7ef8 0%, #06c5f5 100%);
+  background: rgba(59, 126, 248, 0.15);
+  color: #1a5fdb;
+  border-radius: 6px;
+}
+html.dark .tab-active {
+  background: rgba(255, 255, 255, 0.1);
   color: #fff;
-  box-shadow: 0 4px 20px rgba(59, 126, 248, 0.45);
 }
 .tab-inactive {
-  background: rgba(255,255,255,0.5);
+  background: transparent;
   color: #5a6a8a;
+  border-radius: 6px;
 }
 .tab-inactive:hover {
-  background: rgba(255,255,255,0.75);
+  background: rgba(0, 0, 0, 0.05);
   color: #3b7ef8;
 }
 html.dark .tab-inactive {
-  background: rgba(255,255,255,0.06);
+  background: transparent;
   color: #cbd5e1;
 }
 html.dark .tab-inactive:hover {
-  background: rgba(255,255,255,0.12);
+  background: rgba(255, 255, 255, 0.05);
   color: #60a5fa;
 }
 

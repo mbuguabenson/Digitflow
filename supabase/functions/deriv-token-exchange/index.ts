@@ -7,9 +7,10 @@ const corsHeaders = {
 };
 
 const TOKEN_ENDPOINT = "https://auth.deriv.com/oauth2/token";
-const CLIENT_ID = "340CAnHL6ARX85nbTPHe2";
+const CLIENT_ID = "343aX4kokbJ7cI5C42ytV";
 const REDIRECT_URI = "https://digitflow.bolt.host";
 
+// @ts-ignore - Deno is available in the Supabase Edge Function environment
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
