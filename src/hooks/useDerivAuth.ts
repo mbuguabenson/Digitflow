@@ -308,25 +308,30 @@ export function useDerivAuth() {
     setLoading(true);
     setError(null);
     try {
+      let selectedAccount: Account | undefined;
+      
       setAccounts((prev) => {
         const updated = prev.map((a) => ({
           ...a,
           isActive: a.loginid === loginid,
         }));
         accountListListeners.forEach((fn) => fn(updated));
+        
+        const s = prev.find((a) => a.loginid === loginid);
+        if (s) {
+          selectedAccount = {
+            loginid: s.loginid,
+            currency: s.currency,
+            balance: s.balance,
+            isVirtual: s.isVirtual,
+          };
+        }
         return updated;
       });
 
-      const selected = accounts.find((a) => a.loginid === loginid);
-      if (selected) {
-        const updatedActive: Account = {
-          loginid: selected.loginid,
-          currency: selected.currency,
-          balance: selected.balance,
-          isVirtual: selected.isVirtual,
-        };
-        setAccount(updatedActive);
-        listeners.forEach((fn) => fn(updatedActive));
+      if (selectedAccount) {
+        setAccount(selectedAccount);
+        listeners.forEach((fn) => fn(selectedAccount!));
       }
 
       await connectWsForAccount(loginid, authToken, setAccounts);

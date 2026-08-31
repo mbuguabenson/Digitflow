@@ -10,7 +10,40 @@
     <meta name="twitter:image" content="https://bolt.new/static/og_default.png" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <style>
+        .initial-loader-wrapper {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          height: 100vh;
+          width: 100vw;
+          background-color: #f8fafc;
+        }
+        @media (prefers-color-scheme: dark) {
+          .initial-loader-wrapper {
+            background-color: #020617;
+          }
+        }
+        .initial-loader {
+          width: 48px;
+          height: 48px;
+          border: 4px solid #3b82f6;
+          border-bottom-color: transparent;
+          border-radius: 50%;
+          display: inline-block;
+          box-sizing: border-box;
+          animation: rotation 1s linear infinite;
+        }
+        @keyframes rotation {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      </style>
+      <div class="initial-loader-wrapper">
+        <span class="initial-loader"></span>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
