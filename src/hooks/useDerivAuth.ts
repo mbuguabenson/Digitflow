@@ -65,7 +65,14 @@ async function getOtpUrl(accountId: string, token: string): Promise<string> {
 
 function disconnectWs() {
   if (wsInstance) {
-    wsInstance.close();
+    const wsToClose = wsInstance;
+    if (wsToClose.readyState === WebSocket.CONNECTING) {
+      wsToClose.onopen = () => {
+        wsToClose.close();
+      };
+    } else {
+      wsToClose.close();
+    }
     wsInstance = null;
   }
   connectPromise = null;

@@ -328,11 +328,38 @@ export function PovertyHunterTab({
     datasets: [{
       label: 'Digit',
       data: last50,
-      borderColor: isDark ? '#a855f7' : '#9333ea',
-      backgroundColor: isDark ? 'rgba(168, 85, 247, 0.1)' : 'rgba(147, 51, 234, 0.1)',
+      borderColor: '#8B8FEA',
+      backgroundColor: '#8B8FEA',
+      pointBackgroundColor: '#8B8FEA',
+      pointBorderColor: '#8B8FEA',
+      pointRadius: 4,
+      pointHoverRadius: 6,
+      borderWidth: 2,
       tension: 0.4,
-      fill: true,
+      fill: false,
     }]
+  };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: { 
+      y: { display: false, min: -1, max: 11 }, 
+      x: { display: false } 
+    },
+    plugins: { 
+      legend: { display: false },
+      datalabels: {
+        color: '#14b8a6',
+        align: 'top',
+        anchor: 'end',
+        offset: 4,
+        font: { weight: 'bold', size: 13 },
+        formatter: (value: number) => value
+      }
+    },
+    layout: { padding: { top: 20, bottom: 10, left: 10, right: 10 } },
+    animation: { duration: 0 }
   };
 
   return (
@@ -446,15 +473,7 @@ export function PovertyHunterTab({
           )}>
             <Line 
               data={chartData} 
-              options={{ 
-                responsive: true, maintainAspectRatio: false,
-                scales: { 
-                  y: { min: 0, max: 9, ticks: { stepSize: 1 } },
-                  x: { display: false } 
-                },
-                plugins: { legend: { display: false } },
-                animation: { duration: 0 }
-              }} 
+              options={chartOptions as any} 
             />
           </div>
 

@@ -295,15 +295,16 @@ export function useDerivTicks(symbol: string, maxDigits = 1000) {
         pingRef.current = null;
       }
       if (wsRef.current) {
-        if (subIdRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-          wsRef.current.send(JSON.stringify({ forget: subIdRef.current }));
+        const wsToClose = wsRef.current;
+        if (subIdRef.current && wsToClose.readyState === WebSocket.OPEN) {
+          wsToClose.send(JSON.stringify({ forget: subIdRef.current }));
         }
-        if (wsRef.current.readyState === WebSocket.CONNECTING) {
-          wsRef.current.onopen = () => {
-            if (wsRef.current) wsRef.current.close();
+        if (wsToClose.readyState === WebSocket.CONNECTING) {
+          wsToClose.onopen = () => {
+            wsToClose.close();
           };
         } else {
-          wsRef.current.close();
+          wsToClose.close();
         }
         wsRef.current = null;
       }

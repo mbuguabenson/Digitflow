@@ -283,11 +283,38 @@ export function AutoXEOTab({
     datasets: [{
       label: 'Digit',
       data: last50,
-      borderColor: isDark ? '#3b82f6' : '#2563eb',
-      backgroundColor: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(37, 99, 235, 0.1)',
+      borderColor: '#8B8FEA',
+      backgroundColor: '#8B8FEA',
+      pointBackgroundColor: '#8B8FEA',
+      pointBorderColor: '#8B8FEA',
+      pointRadius: 4,
+      pointHoverRadius: 6,
+      borderWidth: 2,
       tension: 0.4,
-      fill: true,
+      fill: false,
     }]
+  };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: { 
+      y: { display: false, min: -1, max: 11 }, 
+      x: { display: false } 
+    },
+    plugins: { 
+      legend: { display: false },
+      datalabels: {
+        color: '#14b8a6',
+        align: 'top',
+        anchor: 'end',
+        offset: 4,
+        font: { weight: 'bold', size: 13 },
+        formatter: (value: number) => value
+      }
+    },
+    layout: { padding: { top: 20, bottom: 10, left: 10, right: 10 } },
+    animation: { duration: 0 }
   };
 
   return (
@@ -460,7 +487,7 @@ export function AutoXEOTab({
         {/* Chart & Recovery Sub-Stats */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className={cn("col-span-2 rounded-2xl border p-4 h-60 backdrop-blur-md", isDark ? "bg-slate-900/40 border-white/10" : "bg-white/70 border-slate-200")}>
-            <Line data={chartData} options={{ responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 9, ticks: { stepSize: 1 } }, x: { display: false } }, plugins: { legend: { display: false } }, animation: { duration: 0 } }} />
+            <Line data={chartData} options={chartOptions as any} />
           </div>
           <div className="flex flex-col gap-4">
             <div className={cn("rounded-2xl border p-5 flex-1 backdrop-blur-md", isDark ? "bg-slate-900/40 border-white/10" : "bg-white/70 border-slate-200")}>
