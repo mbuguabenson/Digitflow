@@ -61,7 +61,7 @@ export function useEliteScanner(symbols: SymbolInfo[], isScanning: boolean) {
 
       ws.onopen = () => {
         // Send requests in small batches
-        const batchSize = 10;
+        const batchSize = 2;
         for (let i = 0; i < Math.min(batchSize, synthetics.length); i++) {
           fetchNext();
           currentIndex++;
