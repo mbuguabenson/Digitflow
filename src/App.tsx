@@ -467,7 +467,7 @@ export default function App() {
         {/* ── Tab Navigation ── */}
         <nav className={cn('sticky top-[56px] z-20 w-full border-b transition-colors', isDark ? 'bg-[#111736] border-white/5' : 'bg-blue-50 border-blue-100')}>
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div ref={scrollContainerRef} className="flex gap-2 overflow-x-auto py-3 px-4 justify-center">
+            <div ref={scrollContainerRef} className="flex gap-2 overflow-x-auto py-3 px-4 no-scrollbar">
               {TABS.map((tab) => {
                 const Icon = tab.icon;
                 const active = activeTab === tab.id;
