@@ -107,31 +107,18 @@ function LineChart({ digits, isDark }: { digits: number[]; isDark: boolean }) {
     const cpx = (pts[i - 1].x + pts[i].x) / 2;
     d += ` C ${cpx},${pts[i - 1].y} ${cpx},${pts[i].y} ${pts[i].x},${pts[i].y}`;
   }
-  const area = d + ` L ${pts[pts.length - 1].x},${PAD.top + innerH} L ${pts[0].x},${PAD.top + innerH} Z`;
 
-  const gridColor = isDark ? '#1e2a5e' : '#e5e7eb';
-  const lineColor = isDark ? '#a78bfa' : '#7c3aed';
-  const dotColor = isDark ? '#a78bfa' : '#7c3aed';
-  const labelColor = isDark ? '#c4b5fd' : '#5b21b6';
-  const chartBg = isDark ? '#111736' : '#f3f4f6';
+  const lineColor = '#8B8FEA';
+  const dotColor = '#8B8FEA';
+  const labelColor = '#14b8a6';
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full" style={{ background: chartBg, borderRadius: 12 }}>
-      <defs>
-        <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={lineColor} stopOpacity="0.18" />
-          <stop offset="100%" stopColor={lineColor} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      {[0,1,2,3,4,5,6,7,8,9].map((v) => (
-        <line key={v} x1={PAD.left} y1={yOf(v)} x2={W - PAD.right} y2={yOf(v)} stroke={gridColor} strokeWidth="1" />
-      ))}
-      <path d={area} fill="url(#areaGrad)" />
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full" style={{ borderRadius: 12 }}>
       <path d={d} fill="none" stroke={lineColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
       {pts.map((p, i) => (
         <g key={i}>
-          <rect x={p.x - 6} y={p.y - 6} width="12" height="12" fill={dotColor} rx="2" />
-          <text x={p.x} y={p.y - 11} textAnchor="middle" fill={labelColor} fontSize="11" fontWeight="700">
+          <circle cx={p.x} cy={p.y} r="5" fill={dotColor} />
+          <text x={p.x} y={p.y - 12} textAnchor="middle" fill={labelColor} fontSize="14" fontWeight="700">
             {p.v}
           </text>
         </g>
