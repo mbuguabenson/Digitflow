@@ -24,6 +24,8 @@ import {
   Zap,
   Download,
   SignalHigh,
+  Crown,
+  Target,
 } from 'lucide-react';
 import { useDerivTicks, useActiveSymbols, type SymbolInfo } from '@/hooks/useDerivTicks';
 import { LoadingScreen } from '@/components/LoadingScreen';
@@ -43,13 +45,19 @@ import { CompoundingChallengeTab } from '@/components/tabs/CompoundingChallengeT
 import { TradingEngineTab } from '@/components/tabs/TradingEngineTab';
 import { SignalsTab } from '@/components/tabs/SignalsTab';
 import { AutotraderTab } from '@/components/tabs/AutotraderTab';
+import { EliteProTab } from '@/components/tabs/EliteProTab';
+import { PovertyHunterTab } from '@/components/tabs/PovertyHunterTab';
+import { AutoXEOTab } from '@/components/tabs/AutoXEOTab';
 import { cn } from '@/lib/utils';
 
-type TabId = 'autotrader' | 'over-under' | 'matches' | 'even-odd' | 'differs' | 'ai' | 'smart' | 'smart-trading' | 'challenge' | 'engine' | 'signals';
+type TabId = 'autotrader' | 'elite-pro' | 'poverty-hunter' | 'auto-x-eo' | 'over-under' | 'matches' | 'even-odd' | 'differs' | 'ai' | 'smart' | 'smart-trading' | 'challenge' | 'engine' | 'signals';
 
 import { Bot } from 'lucide-react';
 
 const TABS: { id: TabId; label: string; icon: typeof Activity }[] = [
+  { id: 'auto-x-eo', label: 'Auto X E/O', icon: Activity },
+  { id: 'poverty-hunter', label: 'Poverty Hunter', icon: Target },
+  { id: 'elite-pro', label: 'Elite Pro', icon: Crown },
   { id: 'autotrader', label: 'Autotrader', icon: Bot },
   { id: 'challenge', label: 'Challenge', icon: Trophy },
   { id: 'engine', label: 'Trading Engine', icon: Flame },
@@ -570,6 +578,54 @@ export default function App() {
                     refreshBalance={refreshBalance}
                     isDark={isDark}
                     onLoginRequest={() => setShowLoginModal(true)}
+                  />
+                )}
+                {activeTab === 'elite-pro' && (
+                  <EliteProTab
+                    account={account}
+                    placeTrade={placeTrade}
+                    watchContract={watchContract}
+                    refreshBalance={refreshBalance}
+                    isDark={isDark}
+                    onLoginRequest={() => setShowLoginModal(true)}
+                    activeSymbol={symbol}
+                    symbols={symbols}
+                    onSymbolChange={(s: string) => setSymbol(s)}
+                    digits={digits}
+                    currentDigit={currentDigit}
+                    currentQuote={currentQuote}
+                  />
+                )}
+                {activeTab === 'poverty-hunter' && (
+                  <PovertyHunterTab
+                    account={account}
+                    placeTrade={placeTrade}
+                    watchContract={watchContract}
+                    refreshBalance={refreshBalance}
+                    isDark={isDark}
+                    onLoginRequest={() => setShowLoginModal(true)}
+                    activeSymbol={symbol}
+                    symbols={symbols}
+                    onSymbolChange={(s: string) => setSymbol(s)}
+                    digits={digits}
+                    currentDigit={currentDigit}
+                    currentQuote={currentQuote}
+                  />
+                )}
+                {activeTab === 'auto-x-eo' && (
+                  <AutoXEOTab
+                    account={account}
+                    placeTrade={placeTrade}
+                    watchContract={watchContract}
+                    refreshBalance={refreshBalance}
+                    isDark={isDark}
+                    onLoginRequest={() => setShowLoginModal(true)}
+                    activeSymbol={symbol}
+                    symbols={symbols}
+                    onSymbolChange={(s: string) => setSymbol(s)}
+                    digits={digits}
+                    currentDigit={currentDigit}
+                    currentQuote={currentQuote}
                   />
                 )}
               </div>
