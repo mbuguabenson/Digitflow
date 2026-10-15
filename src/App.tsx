@@ -249,11 +249,11 @@ export default function App() {
         {/* ── Header ── */}
         <header className={cn('sticky top-0 z-30 w-full border-b transition-colors', isDark ? 'bg-[#0b141e] border-white/5' : 'bg-white border-blue-100')}>
           <div className="w-full">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-7xl px-2 xs:px-3 sm:px-6 lg:px-8">
               {/* Top row */}
-              <div className="flex h-[56px] items-center justify-between">
-                {/* Logo text */}
-                <div>
+              <div className="flex h-[56px] items-center justify-between gap-1 sm:gap-2">
+                {/* Logo text - hidden on mobile mode */}
+                <div className="hidden sm:block shrink-0">
                   <h1 className={cn('text-[19px] font-bold leading-tight', headerTextPrimary)}>
                     Digit<span className="gradient-text">Flow</span>
                   </h1>
@@ -261,13 +261,13 @@ export default function App() {
                 </div>
 
                 {/* Right controls */}
-                <div className="flex items-center gap-2 justify-end flex-1 pl-4">
+                <div className="flex items-center gap-1.5 sm:gap-2 justify-between sm:justify-end flex-1 sm:pl-4 min-w-0">
                   {/* Market dropdown */}
-                  <div className="relative" onClick={(e) => e.stopPropagation()}>
+                  <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => setSymbolOpen(!symbolOpen)}
                       className={cn(
-                        'flex items-center gap-2 rounded-full px-3 py-1.5 backdrop-blur-md border text-sm font-semibold transition-colors max-w-[180px]',
+                        'flex items-center gap-1.5 sm:gap-2 rounded-full px-2.5 sm:px-3 py-1.5 backdrop-blur-md border text-xs sm:text-sm font-semibold transition-colors max-w-[110px] xs:max-w-[145px] sm:max-w-[180px]',
                         isDark
                           ? 'bg-white/5 border-white/10 text-slate-200 hover:bg-white/10'
                           : 'bg-white/60 border-blue-200/40 text-[#3a4a6a] hover:bg-white/80'
@@ -278,7 +278,7 @@ export default function App() {
                     </button>
                     {symbolOpen && (
                       <div className={cn(
-                        'absolute right-0 top-full mt-2 w-80 rounded-2xl border p-2 shadow-xl backdrop-blur-xl max-h-[420px] flex flex-col',
+                        'absolute left-0 sm:left-auto sm:right-0 top-full mt-2 w-72 sm:w-80 rounded-2xl border p-2 shadow-xl backdrop-blur-xl max-h-[420px] flex flex-col z-50',
                         isDark ? 'bg-[#111736]/95 border-white/10' : 'bg-white/95 border-blue-200/40'
                       )}>
                         <div className="relative mb-2">
@@ -340,17 +340,17 @@ export default function App() {
                     )}
                   </div>
 
-                  {/* Price & Last Digit Combined */}
+                  {/* Price & Last Digit Combined - shown on both mobile and desktop */}
                   <div className={cn(
-                    'hidden sm:flex items-center gap-2 rounded-full pl-3 pr-1 py-1 border',
+                    'flex items-center gap-1.5 sm:gap-2 rounded-full pl-2 sm:pl-3 pr-1 py-1 border shrink-0',
                     isDark ? 'bg-white/5 border-white/10' : 'bg-white/60 border-blue-200/40'
                   )}>
-                    <span className={cn('text-[11px] font-semibold', headerTextMuted)}>Price</span>
+                    <span className={cn('text-[10px] sm:text-[11px] font-semibold hidden md:inline', headerTextMuted)}>Price</span>
                     <div className="flex items-center">
-                      <span className={cn('font-mono text-sm font-bold mr-2', headerTextPrimary)}>
+                      <span className={cn('font-mono text-xs sm:text-sm font-bold mr-1.5 sm:mr-2', headerTextPrimary)}>
                         {parseFloat(currentQuote.toFixed(4))}
                       </span>
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-base font-bold text-white shadow-lg shadow-orange-500/40">
+                      <span className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-sm sm:text-base font-bold text-white shadow-md shadow-orange-500/40">
                         {currentDigit}
                       </span>
                     </div>
@@ -360,7 +360,7 @@ export default function App() {
                   <button
                     onClick={() => setTicksOpen(!ticksOpen)}
                     className={cn(
-                      'flex items-center gap-2 rounded-full px-3 py-1.5 backdrop-blur-md border text-sm font-semibold transition-all',
+                      'flex items-center gap-1.5 sm:gap-2 rounded-full px-2.5 sm:px-3 py-1.5 backdrop-blur-md border text-xs sm:text-sm font-semibold transition-all shrink-0',
                       ticksOpen
                         ? 'bg-gradient-to-r from-blue-500 to-cyan-400 text-white border-transparent'
                         : isDark
@@ -375,7 +375,7 @@ export default function App() {
 
                   {/* Live status pill */}
                   <div className={cn(
-                    'hidden md:flex items-center gap-2 rounded-full px-3 py-1.5 border',
+                    'hidden md:flex items-center gap-2 rounded-full px-3 py-1.5 border shrink-0',
                     isDark ? 'bg-white/5 border-white/10' : 'bg-white/60 border-blue-200/40'
                   )}>
                     <StatusIcon className="h-3.5 w-3.5" style={{ color: statusInfo.color }} />
@@ -390,7 +390,7 @@ export default function App() {
                   <button
                     onClick={toggleTheme}
                     className={cn(
-                      'flex h-9 w-9 items-center justify-center rounded-full border backdrop-blur-md transition-all hover:scale-105',
+                      'flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full border backdrop-blur-md transition-all hover:scale-105 shrink-0',
                       isDark
                         ? 'bg-amber-400/15 border-amber-300/30 text-amber-300'
                         : 'bg-white/60 border-blue-200/40 text-amber-500'
@@ -414,13 +414,13 @@ export default function App() {
                     <button
                       onClick={() => setShowLoginModal(true)}
                       className={cn(
-                        'flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold backdrop-blur-md border transition-all hover:scale-105',
+                        'flex items-center gap-1.5 sm:gap-2 rounded-full px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold backdrop-blur-md border transition-all hover:scale-105 shrink-0',
                         isDark
                           ? 'bg-blue-500/15 border-blue-400/30 text-blue-300 hover:bg-blue-500/25'
                           : 'bg-blue-500/10 border-blue-200/50 text-blue-600 hover:bg-blue-500/20'
                       )}
                     >
-                      <LogIn className="h-4 w-4" />
+                      <LogIn className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       Login
                     </button>
                   )}
