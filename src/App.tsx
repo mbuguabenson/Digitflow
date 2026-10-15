@@ -5,7 +5,6 @@ import {
   TrendingDown,
   Check,
   X,
-  Brain,
   Sparkles,
   Wifi,
   WifiOff,
@@ -19,13 +18,9 @@ import {
   Wallet,
   XCircle,
   Trophy,
-  Flame,
   Layers,
-  Zap,
   Download,
   SignalHigh,
-  Crown,
-  Target,
   ShieldCheck,
 } from 'lucide-react';
 import { useDerivTicks, useActiveSymbols, type SymbolInfo } from '@/hooks/useDerivTicks';
@@ -39,37 +34,21 @@ import { OverUnderTab } from '@/components/tabs/OverUnderTab';
 import { MatchesTab } from '@/components/tabs/MatchesTab';
 import { EvenOddTab } from '@/components/tabs/EvenOddTab';
 import { DiffersTab } from '@/components/tabs/DiffersTab';
-import { AIAnalysisTab } from '@/components/tabs/AIAnalysisTab';
 import { SmartAnalysisTab } from '@/components/tabs/SmartAnalysisTab';
 import { SmartTradingTab } from '@/components/tabs/SmartTradingTab';
 import { CompoundingChallengeTab } from '@/components/tabs/CompoundingChallengeTab';
-import { TradingEngineTab } from '@/components/tabs/TradingEngineTab';
-import { SignalsTab } from '@/components/tabs/SignalsTab';
-import { AutotraderTab } from '@/components/tabs/AutotraderTab';
-import { EliteProTab } from '@/components/tabs/EliteProTab';
-import { PovertyHunterTab } from '@/components/tabs/PovertyHunterTab';
-import { AutoXEOTab } from '@/components/tabs/AutoXEOTab';
 import { cn } from '@/lib/utils';
 
-type TabId = 'autotrader' | 'elite-pro' | 'poverty-hunter' | 'auto-x-eo' | 'over-under' | 'matches' | 'even-odd' | 'differs' | 'ai' | 'smart' | 'smart-trading' | 'challenge' | 'engine' | 'signals';
-
-import { Bot } from 'lucide-react';
+type TabId = 'smart' | 'over-under' | 'matches' | 'even-odd' | 'differs' | 'challenge' | 'smart-trading';
 
 const TABS: { id: TabId; label: string; icon: typeof Activity }[] = [
-  { id: 'auto-x-eo', label: 'Auto X E/O', icon: Activity },
-  { id: 'poverty-hunter', label: 'Poverty Hunter', icon: Target },
-  { id: 'elite-pro', label: 'Elite Pro', icon: Crown },
-  { id: 'autotrader', label: 'Autotrader', icon: Bot },
-  { id: 'challenge', label: 'Challenge', icon: Trophy },
-  { id: 'engine', label: 'Trading Engine', icon: Flame },
-  { id: 'smart-trading', label: 'Smart Trading', icon: TrendingDown },
-  { id: 'signals', label: 'Signals', icon: Zap },
   { id: 'smart', label: 'Smart Analysis', icon: Sparkles },
   { id: 'over-under', label: 'Over/Under', icon: TrendingUp },
   { id: 'matches', label: 'Matches', icon: Check },
   { id: 'even-odd', label: 'Even/Odd', icon: Activity },
   { id: 'differs', label: 'Differs', icon: X },
-  { id: 'ai', label: 'AI Analysis', icon: Brain },
+  { id: 'challenge', label: 'Challenge', icon: Trophy },
+  { id: 'smart-trading', label: 'Smart Trading', icon: TrendingDown },
 ];
 
 const MARKET_LABELS: Record<string, string> = {
@@ -109,7 +88,14 @@ export default function App() {
   const [tokenLoading, setTokenLoading] = useState(false);
   const [fetchCount, setFetchCount] = useState(1000);
   const [appLoaded, setAppLoaded] = useState(false);
+  const [hasLoadedInitialData, setHasLoadedInitialData] = useState(false);
   const { digits, quotes, currentDigit, currentQuote, status, tickCount, historyLoading, fetchHistory } = useDerivTicks(symbol);
+
+  useEffect(() => {
+    if (digits.length >= 5 && !hasLoadedInitialData) {
+      setHasLoadedInitialData(true);
+    }
+  }, [digits.length, hasLoadedInitialData]);
   const { symbols, loading: symbolsLoading } = useActiveSymbols();
   const { account, accounts, loading: authLoading, error: authError, loginWithOAuth, loginWithToken, logout, selectAccount, refreshBalance, placeTrade: rawPlaceTrade, watchContract, isIframe } = useDerivAuth();
   const { transactions, addTransaction, clearTransactions, setWatchFn } = useTransactions();
@@ -518,26 +504,20 @@ export default function App() {
 
         {/* ── Main Content ── */}
         <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 w-full">
-          {digits.length < 10 && status === 'open' ? (
+          {!hasLoadedInitialData && digits.length < 5 ? (
             <div className="flex flex-col items-center justify-center py-24">
               <div className="relative">
                 <div className="h-16 w-16 rounded-full border-4 border-blue-200/50" />
                 <Loader2 className="absolute inset-0 m-auto h-8 w-8 animate-spin text-blue-500" />
               </div>
-              <p className={cn('mt-5 text-sm font-medium', headerTextMuted)}>Collecting tick data…</p>
-            </div>
-          ) : status !== 'open' && digits.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-100/60">
-                <WifiOff className="h-8 w-8 text-red-500" />
-              </div>
               <p className={cn('mt-5 text-sm font-medium', headerTextMuted)}>
-                {status === 'connecting' ? 'Connecting to Deriv WebSocket…' : 'Unable to connect. Retrying…'}
+                {status === 'connecting' ? 'Connecting to Deriv WebSocket…' : 'Collecting tick data…'}
               </p>
             </div>
           ) : (
             <>
-              <div key={activeTab} className="fade-up">
+              <div>
+                {activeTab === 'smart' && <SmartAnalysisTab digits={digits} currentDigit={currentDigit} isDark={isDark} />}
                 {activeTab === 'over-under' && (
                   <OverUnderTab
                     digits={digits}
@@ -548,10 +528,9 @@ export default function App() {
                     isDark={isDark}
                   />
                 )}
-                {activeTab === 'matches' && <MatchesTab digits={digits} currentDigit={currentDigit} />}
-                {activeTab === 'even-odd' && <EvenOddTab digits={digits} currentDigit={currentDigit} />}
-                {activeTab === 'differs' && <DiffersTab digits={digits} currentDigit={currentDigit} />}
-                {activeTab === 'ai' && <AIAnalysisTab digits={digits} currentDigit={currentDigit} />}
+                {activeTab === 'matches' && <MatchesTab digits={digits} currentDigit={currentDigit} isDark={isDark} />}
+                {activeTab === 'even-odd' && <EvenOddTab digits={digits} currentDigit={currentDigit} isDark={isDark} />}
+                {activeTab === 'differs' && <DiffersTab digits={digits} currentDigit={currentDigit} isDark={isDark} />}
                 {activeTab === 'challenge' && (
                   <CompoundingChallengeTab
                     symbol={symbol}
@@ -575,83 +554,6 @@ export default function App() {
                     refreshBalance={refreshBalance}
                     isDark={isDark}
                     onLoginRequest={() => setShowLoginModal(true)}
-                  />
-                )}
-                {activeTab === 'signals' && (
-                  <SignalsTab
-                    digits={digits}
-                    quotes={quotes}
-                    currentDigit={currentDigit}
-                    isDark={isDark}
-                  />
-                )}
-                {activeTab === 'smart' && <SmartAnalysisTab digits={digits} currentDigit={currentDigit} isDark={isDark} />}
-                {activeTab === 'engine' && (
-                  <TradingEngineTab
-                    account={account}
-                    placeTrade={placeTrade}
-                    watchContract={watchContract}
-                    refreshBalance={refreshBalance}
-                    isDark={isDark}
-                    onLoginRequest={() => setShowLoginModal(true)}
-                  />
-                )}
-                {activeTab === 'autotrader' && (
-                  <AutotraderTab
-                    account={account}
-                    placeTrade={placeTrade}
-                    watchContract={watchContract}
-                    refreshBalance={refreshBalance}
-                    isDark={isDark}
-                    onLoginRequest={() => setShowLoginModal(true)}
-                  />
-                )}
-                {activeTab === 'elite-pro' && (
-                  <EliteProTab
-                    account={account}
-                    placeTrade={placeTrade}
-                    watchContract={watchContract}
-                    refreshBalance={refreshBalance}
-                    isDark={isDark}
-                    onLoginRequest={() => setShowLoginModal(true)}
-                    activeSymbol={symbol}
-                    symbols={symbols}
-                    onSymbolChange={(s: string) => setSymbol(s)}
-                    digits={digits}
-                    currentDigit={currentDigit}
-                    currentQuote={currentQuote}
-                  />
-                )}
-                {activeTab === 'poverty-hunter' && (
-                  <PovertyHunterTab
-                    account={account}
-                    placeTrade={placeTrade}
-                    watchContract={watchContract}
-                    refreshBalance={refreshBalance}
-                    isDark={isDark}
-                    onLoginRequest={() => setShowLoginModal(true)}
-                    activeSymbol={symbol}
-                    symbols={symbols}
-                    onSymbolChange={(s: string) => setSymbol(s)}
-                    digits={digits}
-                    currentDigit={currentDigit}
-                    currentQuote={currentQuote}
-                  />
-                )}
-                {activeTab === 'auto-x-eo' && (
-                  <AutoXEOTab
-                    account={account}
-                    placeTrade={placeTrade}
-                    watchContract={watchContract}
-                    refreshBalance={refreshBalance}
-                    isDark={isDark}
-                    onLoginRequest={() => setShowLoginModal(true)}
-                    activeSymbol={symbol}
-                    symbols={symbols}
-                    onSymbolChange={(s: string) => setSymbol(s)}
-                    digits={digits}
-                    currentDigit={currentDigit}
-                    currentQuote={currentQuote}
                   />
                 )}
               </div>

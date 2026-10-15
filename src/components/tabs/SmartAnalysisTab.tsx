@@ -202,10 +202,10 @@ function LineChart({
   const latestColor = '#f97316';
   const selectedAccent = '#38bdf8';
 
-  const dotR = count > 30 ? 4 : 5;
+  const dotR = count > 30 ? 4.5 : 5.5;
   // Maintain readable font size even when 50 digits are selected
-  const fontSize = 13.5;
-  const textOffset = 13;
+  const fontSize = 15;
+  const textOffset = 14;
   const strokeWidth = 2.5;
 
   return (
@@ -452,7 +452,7 @@ export function SmartAnalysisTab({ digits, currentDigit, isDark }: Props) {
               ))}
             </div>
           </div>
-          <div style={{ height: 220 }}>
+          <div className="h-[280px] sm:h-[220px]">
             <LineChart
               digits={digits}
               count={lineCount}
@@ -484,11 +484,12 @@ export function SmartAnalysisTab({ digits, currentDigit, isDark }: Props) {
                   key={n}
                   onClick={() => setTickView(n)}
                   className={cn(
-                    'px-3 py-1.5 text-xs font-bold transition-colors',
+                    'px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-bold transition-colors leading-tight',
                     tickView === n ? 'bg-[#3b82f6] text-white' : toggleInactive
                   )}
                 >
-                  {n} TICKS
+                  <span className="sm:hidden">{n}T</span>
+                  <span className="hidden sm:inline">{n} TICKS</span>
                 </button>
               ))}
             </div>

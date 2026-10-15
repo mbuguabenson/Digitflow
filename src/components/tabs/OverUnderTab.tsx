@@ -3,6 +3,8 @@ import { computeDigitStats } from '@/lib/analysis';
 import { cn } from '@/lib/utils';
 import type { Account, TradeResult } from '@/hooks/useDerivAuth';
 import { Loader2, CheckCircle2, XCircle, Wallet, Zap } from 'lucide-react';
+import { DigitsLineChart } from '@/components/DigitsLineChart';
+import { DigitsDistribution } from '@/components/DigitsDistribution';
 
 type Props = {
   digits: number[];
@@ -34,58 +36,6 @@ const TILE_COLORS: Record<number, string> = {
   9: 'bg-[#42a5f5]',
 };
 
-function LineChart({ digits, isDark }: { digits: number[]; isDark: boolean }) {
-  const show = digits.slice(-50);
-  if (show.length < 2) return (
-    <div className="flex h-full items-center justify-center text-sm text-[#9ca3af]">
-      Waiting for data…
-    </div>
-  );
-  const W = 580, H = 200;
-  const PL = 10, PR = 10, PT = 22, PB = 10;
-  const n = show.length;
-  const innerW = W - PL - PR;
-  const innerH = H - PT - PB;
-  const xOf = (i: number) => PL + (i / (n - 1)) * innerW;
-  const yOf = (v: number) => PT + innerH - (v / 9) * innerH;
-  const pts = show.map((d, i) => ({ x: xOf(i), y: yOf(d), v: d }));
-
-  let path = `M ${pts[0].x},${pts[0].y}`;
-  for (let i = 1; i < pts.length; i++) {
-    const cpx = (pts[i - 1].x + pts[i].x) / 2;
-    path += ` C ${cpx},${pts[i - 1].y} ${cpx},${pts[i].y} ${pts[i].x},${pts[i].y}`;
-  }
-  const area = path + ` L ${pts[pts.length - 1].x},${PT + innerH} L ${pts[0].x},${PT + innerH} Z`;
-
-  const lineColor = isDark ? '#a78bfa' : '#8b5cf6';
-  const labelColor = isDark ? '#c4b5fd' : '#6d28d9';
-  const gridColor = isDark ? '#1e2a5e' : '#e5e7eb';
-  const chartBg = isDark ? '#111736' : '#f3f4f6';
-
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full" style={{ background: chartBg, borderRadius: 12 }}>
-      <defs>
-        <linearGradient id="ouAreaGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={lineColor} stopOpacity="0.25" />
-          <stop offset="100%" stopColor={lineColor} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      {[0,2,4,6,8].map((v) => (
-        <line key={v} x1={PL} y1={yOf(v)} x2={W - PR} y2={yOf(v)} stroke={gridColor} strokeWidth="1" />
-      ))}
-      <path d={area} fill="url(#ouAreaGrad)" />
-      <path d={path} fill="none" stroke={lineColor} strokeWidth="2" strokeLinecap="round" />
-      {pts.map((p, i) => (
-        <g key={i}>
-          <circle cx={p.x} cy={p.y} r="3" fill={lineColor} />
-          <text x={p.x} y={p.y - 7} textAnchor="middle" fill={labelColor} fontSize="9" fontWeight="700">
-            {p.v}
-          </text>
-        </g>
-      ))}
-    </svg>
-  );
-}
 
 export function OverUnderTab({ digits, currentDigit, symbol, account, placeTrade, isDark }: Props) {
   const [barrier, setBarrier] = useState(4);
@@ -325,13 +275,26 @@ export function OverUnderTab({ digits, currentDigit, symbol, account, placeTrade
         </div>
       </div>
 
-      {/* ── Section 3: Line chart ── */}
+      {/* ── Section 3: Digits Distribution ── */}
       <div className={cn('rounded-2xl overflow-hidden border', panelBorder)} style={{ background: panelBg }}>
-        <div className="px-6 pt-5 pb-5">
-          <h3 className={cn('text-base font-bold mb-3', headingColor)}>Digits Line Chart</h3>
-          <div style={{ height: 220 }}>
-            <LineChart digits={digits} isDark={isDark} />
-          </div>
+        <div className="px-4 sm:px-6 pt-5 pb-5">
+          <DigitsDistribution
+            digits={digits}
+            currentDigit={currentDigit}
+            isDark={isDark}
+          />
+        </div>
+      </div>
+
+      {/* ── Section 4: Line chart ── */}
+      <div className={cn('rounded-2xl overflow-hidden border', panelBorder)} style={{ background: panelBg }}>
+        <div className="px-5 sm:px-6 pt-5 pb-5">
+          <DigitsLineChart
+            digits={digits}
+            isDark={isDark}
+            defaultCount={20}
+            counts={[20, 50, 60, 120]}
+          />
         </div>
       </div>
 
