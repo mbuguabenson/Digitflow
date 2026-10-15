@@ -1,9 +1,10 @@
-import { DERIV_APP_ID, TOKEN_EXCHANGE_URL } from '@/lib/config';
+import { DERIV_OAUTH_CLIENT_ID, DERIV_APP_ID, DERIV_REDIRECT_URI, TOKEN_EXCHANGE_URL } from '@/lib/config';
 
 const DERIV_AUTH_URL = 'https://auth.deriv.com/oauth2/auth';
 
 const VERIFIER_KEY = 'deriv_pkce_verifier';
 const STATE_KEY = 'deriv_oauth_state';
+const REDIRECT_URI_KEY = 'deriv_redirect_uri';
 
 const CODE_VERIFIER_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
 
@@ -25,18 +26,33 @@ export function generateState(): string {
   return Array.from(array).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-export async function buildOAuthUrl(): Promise<string> {
+export function getEffectiveRedirectUri(customRedirectUri?: string): string {
+  if (customRedirectUri) return customRedirectUri;
+  if (DERIV_REDIRECT_URI) return DERIV_REDIRECT_URI;
+  return window.location.origin;
+}
+
+export async function buildOAuthUrl(customRedirectUri?: string): Promise<string> {
   const verifier = generateCodeVerifier();
   const challenge = await generateCodeChallenge(verifier);
   const state = generateState();
-  const redirect_uri = window.location.origin;
+  const redirect_uri = getEffectiveRedirectUri(customRedirectUri);
 
-  sessionStorage.setItem(VERIFIER_KEY, verifier);
-  sessionStorage.setItem(STATE_KEY, state);
+  // Store in both sessionStorage and localStorage so popup windows or top window can access it
+  try {
+    sessionStorage.setItem(VERIFIER_KEY, verifier);
+    sessionStorage.setItem(STATE_KEY, state);
+    sessionStorage.setItem(REDIRECT_URI_KEY, redirect_uri);
+  } catch {}
+  try {
+    localStorage.setItem(VERIFIER_KEY, verifier);
+    localStorage.setItem(STATE_KEY, state);
+    localStorage.setItem(REDIRECT_URI_KEY, redirect_uri);
+  } catch {}
 
   const params = new URLSearchParams({
     response_type: 'code',
-    client_id: DERIV_APP_ID,
+    client_id: DERIV_OAUTH_CLIENT_ID,
     redirect_uri,
     scope: 'trade account_manage',
     state,
@@ -50,16 +66,40 @@ export async function buildOAuthUrl(): Promise<string> {
 }
 
 export function getStoredVerifier(): string | null {
-  return sessionStorage.getItem(VERIFIER_KEY);
+  try {
+    return sessionStorage.getItem(VERIFIER_KEY) || localStorage.getItem(VERIFIER_KEY);
+  } catch {
+    return null;
+  }
 }
 
 export function getStoredState(): string | null {
-  return sessionStorage.getItem(STATE_KEY);
+  try {
+    return sessionStorage.getItem(STATE_KEY) || localStorage.getItem(STATE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function getStoredRedirectUri(): string | null {
+  try {
+    return sessionStorage.getItem(REDIRECT_URI_KEY) || localStorage.getItem(REDIRECT_URI_KEY);
+  } catch {
+    return null;
+  }
 }
 
 export function clearPKCE() {
-  sessionStorage.removeItem(VERIFIER_KEY);
-  sessionStorage.removeItem(STATE_KEY);
+  try {
+    sessionStorage.removeItem(VERIFIER_KEY);
+    sessionStorage.removeItem(STATE_KEY);
+    sessionStorage.removeItem(REDIRECT_URI_KEY);
+  } catch {}
+  try {
+    localStorage.removeItem(VERIFIER_KEY);
+    localStorage.removeItem(STATE_KEY);
+    localStorage.removeItem(REDIRECT_URI_KEY);
+  } catch {}
 }
 
 export function validateState(state: string): boolean {
@@ -73,10 +113,10 @@ export type TokenResponse = {
   expires_in: number;
 };
 
-export async function exchangeCodeForToken(code: string): Promise<TokenResponse> {
+export async function exchangeCodeForToken(code: string, customRedirectUri?: string): Promise<TokenResponse> {
   const verifier = getStoredVerifier();
   if (!verifier) throw new Error('Missing PKCE verifier');
-  const redirect_uri = window.location.origin;
+  const redirect_uri = customRedirectUri || getStoredRedirectUri() || getEffectiveRedirectUri();
 
   try {
     const res = await fetch(TOKEN_EXCHANGE_URL, {
@@ -97,7 +137,7 @@ export async function exchangeCodeForToken(code: string): Promise<TokenResponse>
   // Fallback to direct token exchange
   const formBody = new URLSearchParams({
     grant_type: 'authorization_code',
-    client_id: DERIV_APP_ID,
+    client_id: DERIV_OAUTH_CLIENT_ID,
     code,
     code_verifier: verifier,
     redirect_uri,
@@ -118,5 +158,6 @@ export async function exchangeCodeForToken(code: string): Promise<TokenResponse>
   return data as TokenResponse;
 }
 
-export { DERIV_APP_ID };
+export { DERIV_OAUTH_CLIENT_ID, DERIV_APP_ID };
+
 

@@ -46,6 +46,20 @@ function nextReqId() {
   return reqIdCounter;
 }
 
+function notifyParentSession(type: string, payload: Record<string, unknown> = {}) {
+  try {
+    if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
+      window.parent.postMessage({
+        source: 'digitflow',
+        type,
+        ...payload,
+      }, '*');
+    }
+  } catch {
+    // Cross-origin restriction
+  }
+}
+
 async function getOtpUrl(accountId: string, token: string): Promise<string> {
   const res = await fetch(`${DERIV_API_URL}/trading/v1/options/accounts/${accountId}/otp`, {
     method: 'POST',
@@ -128,6 +142,7 @@ function connectWsForAccount(accountId: string, token: string, setAccounts: Reac
                 isVirtual: String(bal.loginid).startsWith('VR'),
               };
               listeners.forEach((fn) => fn(updatedAccount));
+              notifyParentSession('DIGITFLOW_BALANCE_UPDATE', { account: updatedAccount });
               
               // Update balance in the accounts list
               setAccounts((prev) => {
@@ -288,6 +303,11 @@ export function useDerivAuth() {
 
       accountListListeners.forEach((fn) => fn(mappedAccounts));
       listeners.forEach((fn) => fn(activeAccount));
+      notifyParentSession('DIGITFLOW_SESSION_LOGIN', {
+        token,
+        account: activeAccount,
+        accounts: mappedAccounts,
+      });
 
       await connectWsForAccount(active.loginid, token, setAccounts);
     } catch (err) {
@@ -332,6 +352,7 @@ export function useDerivAuth() {
       if (selectedAccount) {
         setAccount(selectedAccount);
         listeners.forEach((fn) => fn(selectedAccount!));
+        notifyParentSession('DIGITFLOW_ACCOUNT_SWITCH', { account: selectedAccount });
       }
 
       await connectWsForAccount(loginid, authToken, setAccounts);
@@ -349,6 +370,7 @@ export function useDerivAuth() {
     setAccounts([]);
     localStorage.removeItem(TOKEN_KEY);
     disconnectWs();
+    notifyParentSession('DIGITFLOW_SESSION_LOGOUT');
   }, []);
 
   const refreshBalance = useCallback(async () => {
@@ -453,9 +475,46 @@ export function useDerivAuth() {
     };
   }, []);
 
-  const loginWithOAuth = useCallback(async () => {
-    const url = await buildOAuthUrl();
-    window.location.href = url;
+  const loginWithOAuth = useCallback(async (customRedirectUri?: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const url = await buildOAuthUrl(customRedirectUri);
+      const isIframe = typeof window !== 'undefined' && window.self !== window.top;
+
+      if (isIframe) {
+        // auth.deriv.com denies iframe rendering (X-Frame-Options: DENY).
+        // Open OAuth inside a centered popup window so login succeeds without breaking out of the host page.
+        const width = 560;
+        const height = 720;
+        const left = Math.max(0, Math.floor((window.screen.width - width) / 2));
+        const top = Math.max(0, Math.floor((window.screen.height - height) / 2));
+        const popup = window.open(
+          url,
+          'deriv_oauth_popup',
+          `width=${width},height=${height},left=${left},top=${top},status=no,toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
+        );
+
+        if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+          // If browser popup blocker intervened, try navigating top window if permissible
+          try {
+            if (window.top) {
+              window.top.location.href = url;
+              return;
+            }
+          } catch {
+            // Cross-origin top navigation restricted
+          }
+          throw new Error('Login popup was blocked by browser. Please allow popups or connect with an API Token.');
+        }
+      } else {
+        window.location.href = url;
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start OAuth login');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   const handleOAuthCallback = useCallback(async (): Promise<boolean> => {
@@ -475,6 +534,25 @@ export function useDerivAuth() {
     try {
       setLoading(true);
       const tokenRes = await exchangeCodeForToken(code);
+
+      // If this window was opened as an OAuth popup by an iframe or another window:
+      if (typeof window !== 'undefined' && window.opener && window.opener !== window) {
+        try {
+          window.opener.postMessage(
+            {
+              source: 'digitflow',
+              type: 'DERIV_AUTH_SUCCESS',
+              token: tokenRes.access_token,
+            },
+            '*'
+          );
+          window.close();
+          return true;
+        } catch {
+          // If cross-window postMessage fails, proceed with login in current window
+        }
+      }
+
       await loginWithToken(tokenRes.access_token);
       window.history.replaceState({}, '', window.location.pathname);
       return true;
@@ -489,22 +567,118 @@ export function useDerivAuth() {
     }
   }, [loginWithToken]);
 
+  // Listen for login / session messages from parent website or OAuth popups
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (!event.data || typeof event.data !== 'object') return;
+      const data = event.data;
+
+      // 1. Session token received from parent website, popup, or external script
+      if (
+        data.type === 'DERIV_AUTH_SUCCESS' ||
+        data.type === 'DERIV_SET_TOKEN' ||
+        data.type === 'DERIV_SET_SESSION' ||
+        data.type === 'DERIV_AUTH_TOKEN' ||
+        data.type === 'LOGIN_SESSION' ||
+        data.type === 'DERIV_SESSION_RESPONSE' ||
+        data.action === 'setToken' ||
+        data.action === 'login' ||
+        (data.source === 'parent' && data.token)
+      ) {
+        const token = data.token || data.access_token;
+        if (typeof token === 'string' && token.trim().length > 0) {
+          loginWithToken(token.trim())
+            .then(() => {
+              if (event.source && 'postMessage' in event.source) {
+                try {
+                  (event.source as Window).postMessage(
+                    {
+                      source: 'digitflow',
+                      type: 'DIGITFLOW_SESSION_ACK',
+                      success: true,
+                    },
+                    '*'
+                  );
+                } catch {}
+              }
+            })
+            .catch((err) => {
+              console.error('Failed to log in with received message token:', err);
+            });
+        }
+      }
+
+      // 2. Logout requested from parent
+      if (data.type === 'DERIV_LOGOUT' || data.action === 'logout') {
+        logout();
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, [loginWithToken, logout]);
+
+  // Initial mount: check URL parameters, hash, or local storage
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
 
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get('code');
+    const urlParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
 
-    if (code) {
+    // Check for tokens passed directly (e.g., when embedded in iframe: ?token=xxx or #token=xxx)
+    const directToken =
+      urlParams.get('token') ||
+      urlParams.get('access_token') ||
+      urlParams.get('deriv_token') ||
+      urlParams.get('api_token') ||
+      hashParams.get('token') ||
+      hashParams.get('access_token');
+
+    const code = urlParams.get('code');
+
+    if (directToken) {
+      loginWithToken(directToken.trim())
+        .then(() => {
+          // Remove sensitive token from URL for security
+          window.history.replaceState({}, '', window.location.pathname);
+        })
+        .catch(() => {
+          const stored = localStorage.getItem(TOKEN_KEY);
+          if (stored) {
+            loginWithToken(stored).catch(() => localStorage.removeItem(TOKEN_KEY));
+          }
+        });
+    } else if (code) {
       handleOAuthCallback();
     } else {
       const stored = localStorage.getItem(TOKEN_KEY);
       if (stored) {
         loginWithToken(stored).catch(() => localStorage.removeItem(TOKEN_KEY));
+      } else if (typeof window !== 'undefined' && window.self !== window.top) {
+        // Embedded in iframe and no local token: request session from parent website
+        notifyParentSession('DIGITFLOW_REQUEST_SESSION');
       }
     }
   }, [handleOAuthCallback, loginWithToken]);
 
-  return { account, accounts, loading, error, loginWithOAuth, logout, refreshBalance, placeTrade, watchContract, selectAccount };
+  const isIframe = typeof window !== 'undefined' && window.self !== window.top;
+
+  return {
+    account,
+    accounts,
+    loading,
+    error,
+    loginWithOAuth,
+    loginWithToken,
+    logout,
+    refreshBalance,
+    placeTrade,
+    watchContract,
+    selectAccount,
+    isIframe,
+  };
 }
+

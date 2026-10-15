@@ -26,6 +26,7 @@ import {
   SignalHigh,
   Crown,
   Target,
+  ShieldCheck,
 } from 'lucide-react';
 import { useDerivTicks, useActiveSymbols, type SymbolInfo } from '@/hooks/useDerivTicks';
 import { LoadingScreen } from '@/components/LoadingScreen';
@@ -103,12 +104,37 @@ export default function App() {
   const [ticksOpen, setTicksOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [apiTokenInput, setApiTokenInput] = useState('');
+  const [tokenError, setTokenError] = useState<string | null>(null);
+  const [tokenLoading, setTokenLoading] = useState(false);
   const [fetchCount, setFetchCount] = useState(1000);
   const [appLoaded, setAppLoaded] = useState(false);
   const { digits, quotes, currentDigit, currentQuote, status, tickCount, historyLoading, fetchHistory } = useDerivTicks(symbol);
   const { symbols, loading: symbolsLoading } = useActiveSymbols();
-  const { account, accounts, loading: authLoading, error: authError, loginWithOAuth, logout, selectAccount, refreshBalance, placeTrade: rawPlaceTrade, watchContract } = useDerivAuth();
+  const { account, accounts, loading: authLoading, error: authError, loginWithOAuth, loginWithToken, logout, selectAccount, refreshBalance, placeTrade: rawPlaceTrade, watchContract, isIframe } = useDerivAuth();
   const { transactions, addTransaction, clearTransactions, setWatchFn } = useTransactions();
+
+  useEffect(() => {
+    if (account && showLoginModal) {
+      setShowLoginModal(false);
+    }
+  }, [account, showLoginModal]);
+
+  const handleTokenSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!apiTokenInput.trim()) return;
+    setTokenError(null);
+    setTokenLoading(true);
+    try {
+      await loginWithToken(apiTokenInput.trim());
+      setShowLoginModal(false);
+      setApiTokenInput('');
+    } catch (err) {
+      setTokenError(err instanceof Error ? err.message : 'Invalid API token or connection failed');
+    } finally {
+      setTokenLoading(false);
+    }
+  };
 
   useEffect(() => { setWatchFn(watchContract); }, [watchContract, setWatchFn]);
 
@@ -648,24 +674,26 @@ export default function App() {
       {/* ── Login Modal ── */}
       {showLoginModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
           onClick={() => setShowLoginModal(false)}
         >
           <div
             className={cn(
-              'w-full max-w-md rounded-2xl border p-6 shadow-2xl',
+              'w-full max-w-md rounded-2xl border p-6 shadow-2xl transition-all',
               isDark ? 'bg-[#111736] border-white/10' : 'bg-white border-blue-200/50'
             )}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-5 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 shadow-md shadow-blue-500/20">
                   <LogIn className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <h2 className={cn('text-lg font-bold', headerTextPrimary)}>Login to Deriv</h2>
-                  <p className={cn('text-xs', headerTextMuted)}>Connect your account to trade</p>
+                  <h2 className={cn('text-lg font-bold', headerTextPrimary)}>Connect Deriv Account</h2>
+                  <p className={cn('text-xs', headerTextMuted)}>
+                    {isIframe ? 'Embedded mode · Popup or Token login' : 'Authenticate to start live trading'}
+                  </p>
                 </div>
               </div>
               <button
@@ -677,33 +705,103 @@ export default function App() {
             </div>
 
             <div className="space-y-4">
+              {/* OAuth Login */}
               <button
                 onClick={() => { loginWithOAuth(); }}
-                disabled={authLoading}
+                disabled={authLoading || tokenLoading}
                 className={cn(
-                  'w-full rounded-xl py-3 text-sm font-bold text-white transition-all',
+                  'w-full rounded-xl py-3 text-sm font-bold text-white transition-all flex items-center justify-center gap-2',
                   authLoading
                     ? 'bg-blue-300 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-blue-500 to-cyan-400 hover:shadow-lg hover:shadow-blue-500/30'
+                    : 'bg-gradient-to-r from-blue-500 to-cyan-400 hover:shadow-lg hover:shadow-blue-500/30 active:scale-[0.99]'
                 )}
               >
                 {authLoading ? (
-                  <span className="flex items-center justify-center gap-2">
+                  <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Redirecting…
-                  </span>
+                    Opening Login…
+                  </>
                 ) : (
-                  <span className="flex items-center justify-center gap-2">
+                  <>
                     <LogIn className="h-4 w-4" />
-                    Login with Deriv
-                  </span>
+                    Login with Deriv (OAuth)
+                  </>
                 )}
               </button>
 
-              {authError && (
+              <div className="relative flex items-center justify-center my-3">
+                <div className={cn('w-full border-t', isDark ? 'border-white/10' : 'border-gray-200')} />
+                <span className={cn('absolute px-3 text-[10px] font-bold uppercase tracking-wider', isDark ? 'bg-[#111736] text-gray-400' : 'bg-white text-gray-500')}>
+                  Or Connect with API Token
+                </span>
+              </div>
+
+              {/* API Token Input Form */}
+              <form onSubmit={handleTokenSubmit} className="space-y-2.5">
+                <div>
+                  <label className={cn('block text-xs font-semibold mb-1', headerTextMuted)}>
+                    Personal Access Token (PAT)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="password"
+                      value={apiTokenInput}
+                      onChange={(e) => setApiTokenInput(e.target.value)}
+                      placeholder="Paste your Deriv API token here"
+                      disabled={tokenLoading || authLoading}
+                      className={cn(
+                        'w-full rounded-xl border px-3 py-2.5 text-xs font-mono outline-none transition-colors',
+                        isDark
+                          ? 'bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-blue-400'
+                          : 'bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-blue-500'
+                      )}
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={!apiTokenInput.trim() || tokenLoading || authLoading}
+                  className={cn(
+                    'w-full rounded-xl py-2.5 text-xs font-bold transition-all flex items-center justify-center gap-2 border',
+                    !apiTokenInput.trim() || tokenLoading || authLoading
+                      ? 'opacity-50 cursor-not-allowed bg-transparent border-gray-500/20 text-gray-400'
+                      : isDark
+                        ? 'bg-blue-500/20 border-blue-400/40 text-blue-300 hover:bg-blue-500/30'
+                        : 'bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100'
+                  )}
+                >
+                  {tokenLoading ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Connecting…
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck className="h-3.5 w-3.5" />
+                      Connect Token
+                    </>
+                  )}
+                </button>
+              </form>
+
+              {(authError || tokenError) && (
                 <div className="flex items-start gap-2 rounded-xl bg-red-500/10 border border-red-500/30 px-3 py-2.5">
                   <XCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
-                  <p className="text-xs text-red-500">{authError}</p>
+                  <p className="text-xs text-red-500">{authError || tokenError}</p>
+                </div>
+              )}
+
+              {/* Iframe tip */}
+              {isIframe && (
+                <div className={cn(
+                  'rounded-xl p-3 text-[11px] leading-relaxed border',
+                  isDark ? 'bg-cyan-500/10 border-cyan-400/20 text-cyan-200/90' : 'bg-cyan-50 border-cyan-200 text-cyan-800'
+                )}>
+                  <p className="font-semibold mb-0.5">Iframe Integration Note:</p>
+                  <p className="opacity-90">
+                    Host site can share login via <code className="font-mono text-[10px] bg-black/10 px-1 py-0.5 rounded">postMessage(&#123; type: 'DERIV_SET_TOKEN', token &#125;)</code> or by appending <code className="font-mono text-[10px] bg-black/10 px-1 py-0.5 rounded">?token=...</code> to the iframe URL.
+                  </p>
                 </div>
               )}
             </div>

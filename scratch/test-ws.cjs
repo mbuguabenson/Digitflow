@@ -1,6 +1,6 @@
 const WebSocket = require('ws');
 
-const PUBLIC_WS_URL = 'wss://api.derivws.com/trading/v1/options/ws/public?app_id=1089';
+const PUBLIC_WS_URL = 'wss://ws.binaryws.com/websockets/v3?app_id=36300';
 const ws = new WebSocket(PUBLIC_WS_URL);
 
 ws.on('open', () => {
