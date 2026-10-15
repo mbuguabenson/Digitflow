@@ -233,7 +233,7 @@ export default function App() {
 
         <div className="relative z-10">
         {/* ── Header ── */}
-        <header className={cn('sticky top-0 z-30 w-full border-b transition-colors', isDark ? 'bg-[#0b141e] border-white/5' : 'bg-white border-blue-100')}>
+        <header className={cn('sticky top-0 z-30 w-full border-b transition-colors glass-panel')}>
           <div className="w-full">
             <div className="mx-auto max-w-7xl px-2 xs:px-3 sm:px-6 lg:px-8">
               {/* Top row */}
@@ -253,10 +253,8 @@ export default function App() {
                     <button
                       onClick={() => setSymbolOpen(!symbolOpen)}
                       className={cn(
-                        'flex items-center gap-1.5 sm:gap-2 rounded-full px-2.5 sm:px-3 py-1.5 backdrop-blur-md border text-xs sm:text-sm font-semibold transition-colors max-w-[110px] xs:max-w-[145px] sm:max-w-[180px]',
-                        isDark
-                          ? 'bg-white/5 border-white/10 text-slate-200 hover:bg-white/10'
-                          : 'bg-white/60 border-blue-200/40 text-[#3a4a6a] hover:bg-white/80'
+                        'flex items-center gap-1.5 sm:gap-2 rounded-xl px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-semibold transition-all max-w-[110px] xs:max-w-[145px] sm:max-w-[180px] neu-btn',
+                        symbolOpen && 'active'
                       )}
                     >
                       <span className="truncate">{currentSymbolName}</span>
@@ -327,16 +325,14 @@ export default function App() {
                   </div>
 
                   {/* Price & Last Digit Combined - shown on both mobile and desktop */}
-                  <div className={cn(
-                    'flex items-center gap-1.5 sm:gap-2 rounded-full pl-2 sm:pl-3 pr-1 py-1 border shrink-0',
-                    isDark ? 'bg-white/5 border-white/10' : 'bg-white/60 border-blue-200/40'
-                  )}>
+                  {/* Price & Last Digit Combined - shown on both mobile and desktop */}
+                  <div className="flex items-center gap-1.5 sm:gap-2 rounded-xl pl-2 sm:pl-3 pr-1 py-1 shrink-0 neu-inset">
                     <span className={cn('text-[10px] sm:text-[11px] font-semibold hidden md:inline', headerTextMuted)}>Price</span>
                     <div className="flex items-center">
                       <span className={cn('font-mono text-xs sm:text-sm font-bold mr-1.5 sm:mr-2', headerTextPrimary)}>
                         {parseFloat(currentQuote.toFixed(4))}
                       </span>
-                      <span className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-sm sm:text-base font-bold text-white shadow-md shadow-orange-500/40">
+                      <span className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-gradient-to-br from-orange-400 to-orange-600 text-sm sm:text-base font-bold text-white shadow-md shadow-orange-500/40">
                         {currentDigit}
                       </span>
                     </div>
@@ -346,12 +342,8 @@ export default function App() {
                   <button
                     onClick={() => setTicksOpen(!ticksOpen)}
                     className={cn(
-                      'flex items-center gap-1.5 sm:gap-2 rounded-full px-2.5 sm:px-3 py-1.5 backdrop-blur-md border text-xs sm:text-sm font-semibold transition-all shrink-0',
-                      ticksOpen
-                        ? 'bg-gradient-to-r from-blue-500 to-cyan-400 text-white border-transparent'
-                        : isDark
-                          ? 'bg-white/5 border-white/10 text-slate-200 hover:bg-white/10'
-                          : 'bg-white/60 border-blue-200/40 text-[#3a4a6a] hover:bg-white/80'
+                      'flex items-center gap-1.5 sm:gap-2 rounded-xl px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-semibold transition-all shrink-0 neu-btn',
+                      ticksOpen && 'active'
                     )}
                     title="Toggle tick stream"
                   >
@@ -360,10 +352,7 @@ export default function App() {
                   </button>
 
                   {/* Live status pill */}
-                  <div className={cn(
-                    'hidden md:flex items-center gap-2 rounded-full px-3 py-1.5 border shrink-0',
-                    isDark ? 'bg-white/5 border-white/10' : 'bg-white/60 border-blue-200/40'
-                  )}>
+                  <div className="hidden md:flex items-center gap-2 rounded-xl px-3 py-1.5 shrink-0 neu-inset">
                     <StatusIcon className="h-3.5 w-3.5" style={{ color: statusInfo.color }} />
                     {statusInfo.spin && <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>}
                     <span className="text-xs font-semibold" style={{ color: statusInfo.color }}>
@@ -376,10 +365,8 @@ export default function App() {
                   <button
                     onClick={toggleTheme}
                     className={cn(
-                      'flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full border backdrop-blur-md transition-all hover:scale-105 shrink-0',
-                      isDark
-                        ? 'bg-amber-400/15 border-amber-300/30 text-amber-300'
-                        : 'bg-white/60 border-blue-200/40 text-amber-500'
+                      'flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl transition-all shrink-0 neu-btn',
+                      isDark ? 'text-amber-300' : 'text-amber-500'
                     )}
                     title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
                   >
@@ -477,9 +464,9 @@ export default function App() {
         </header>
 
         {/* ── Tab Navigation ── */}
-        <nav className={cn('sticky top-[56px] z-20 w-full border-b transition-colors', isDark ? 'bg-[#111736] border-white/5' : 'bg-blue-50 border-blue-100')}>
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div ref={scrollContainerRef} className="flex gap-2 overflow-x-auto py-3 px-4 no-scrollbar">
+        <nav className={cn('sticky top-[56px] z-20 w-full border-b transition-colors backdrop-blur-xl', isDark ? 'bg-[#0a0e27]/85 border-white/5' : 'bg-[#eef2fb]/85 border-blue-200/40')}>
+          <div className="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8 py-2">
+            <div ref={scrollContainerRef} className="flex items-center gap-1.5 overflow-x-auto p-1.5 rounded-2xl no-scrollbar neu-inset">
               {TABS.map((tab) => {
                 const Icon = tab.icon;
                 const active = activeTab === tab.id;
@@ -489,11 +476,17 @@ export default function App() {
                     ref={active ? activeTabRef : null}
                     onClick={() => setActiveTab(tab.id)}
                     className={cn(
-                      'flex items-center gap-2 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-semibold transition-all',
-                      active ? 'tab-active' : 'tab-inactive'
+                      'flex items-center gap-2 whitespace-nowrap rounded-xl px-3.5 py-2 text-xs font-bold transition-all duration-200',
+                      active
+                        ? (isDark
+                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30'
+                            : 'bg-white text-blue-600 shadow-md shadow-blue-500/15 border border-white')
+                        : (isDark
+                            ? 'text-slate-400 hover:text-white hover:bg-white/5'
+                            : 'text-[#5a6a8a] hover:text-[#1a2a4a] hover:bg-white/40')
                     )}
                   >
-                    <Icon className="h-4 w-4" />
+                    <Icon className="h-4 w-4 shrink-0" />
                     {tab.label}
                   </button>
                 );

@@ -55,16 +55,16 @@ export function EvenOddTab({ digits, currentDigit, isDark = true }: Props) {
   return (
     <div className="space-y-4">
       {/* ── Header Controls ── */}
-      <div className={cn('rounded-2xl p-5 border shadow-sm', panelBorder)} style={{ background: panelBg }}>
+      <div className={cn('rounded-2xl p-5 border shadow-sm glass-panel', panelBorder)}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-md shadow-indigo-500/20">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-md shadow-indigo-500/30 neu-tile">
               <Activity className="h-6 w-6" />
             </div>
             <div>
               <h2 className={cn('text-lg font-bold flex items-center gap-2', headingColor)}>
                 Even / Odd Analysis
-                <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-full border', isDark ? 'border-indigo-400/30 bg-indigo-500/10 text-indigo-400' : 'border-indigo-200 bg-indigo-50 text-indigo-700')}>
+                <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-full border shadow-sm', isDark ? 'border-indigo-400/30 bg-indigo-500/10 text-indigo-400' : 'border-indigo-200 bg-indigo-50 text-indigo-700')}>
                   50/50 Binary Market
                 </span>
               </h2>
@@ -76,7 +76,7 @@ export function EvenOddTab({ digits, currentDigit, isDark = true }: Props) {
 
           <div className="flex items-center gap-2 self-start sm:self-auto">
             <span className={cn('text-xs font-bold uppercase tracking-wider', mutedColor)}>Lookback:</span>
-            <div className="inline-flex rounded-xl p-1 border" style={{ borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(219,234,254,0.8)', background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(240,249,255,0.6)' }}>
+            <div className="inline-flex rounded-xl p-1 neu-inset">
               {([25, 50, 100, 200] as const).map((n) => (
                 <button
                   key={n}
@@ -202,7 +202,7 @@ export function EvenOddTab({ digits, currentDigit, isDark = true }: Props) {
 
       {/* ── Key Metrics & Streaks Grid ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className={cn('rounded-xl p-4 border shadow-sm', cardBorder)} style={{ background: cardBg }}>
+        <div className={cn('rounded-2xl p-4 border shadow-sm glass-card-elevated', cardBorder)}>
           <div className="flex items-center gap-2 mb-1.5">
             <Flame className="h-4 w-4 text-violet-400" />
             <p className={cn('text-xs font-medium', subTextColor)}>Longest Even Streak</p>
@@ -210,7 +210,7 @@ export function EvenOddTab({ digits, currentDigit, isDark = true }: Props) {
           <p className="text-2xl font-black text-violet-400">{streaks.longestEven} <span className="text-xs font-normal text-violet-400/80">ticks</span></p>
         </div>
 
-        <div className={cn('rounded-xl p-4 border shadow-sm', cardBorder)} style={{ background: cardBg }}>
+        <div className={cn('rounded-2xl p-4 border shadow-sm glass-card-elevated', cardBorder)}>
           <div className="flex items-center gap-2 mb-1.5">
             <Zap className="h-4 w-4 text-orange-400" />
             <p className={cn('text-xs font-medium', subTextColor)}>Longest Odd Streak</p>
@@ -218,7 +218,7 @@ export function EvenOddTab({ digits, currentDigit, isDark = true }: Props) {
           <p className="text-2xl font-black text-orange-400">{streaks.longestOdd} <span className="text-xs font-normal text-orange-400/80">ticks</span></p>
         </div>
 
-        <div className={cn('rounded-xl p-4 border shadow-sm', cardBorder)} style={{ background: cardBg }}>
+        <div className={cn('rounded-2xl p-4 border shadow-sm glass-card-elevated', cardBorder)}>
           <div className="flex items-center gap-2 mb-1.5">
             <TrendingUp className="h-4 w-4 text-emerald-400" />
             <p className={cn('text-xs font-medium', subTextColor)}>Current Streak</p>
@@ -228,7 +228,7 @@ export function EvenOddTab({ digits, currentDigit, isDark = true }: Props) {
           </p>
         </div>
 
-        <div className={cn('rounded-xl p-4 border shadow-sm', cardBorder)} style={{ background: cardBg }}>
+        <div className={cn('rounded-2xl p-4 border shadow-sm glass-card-elevated', cardBorder)}>
           <div className="flex items-center gap-2 mb-1.5">
             <BarChart2 className="h-4 w-4 text-blue-400" />
             <p className={cn('text-xs font-medium', subTextColor)}>Current Digit</p>
@@ -237,7 +237,7 @@ export function EvenOddTab({ digits, currentDigit, isDark = true }: Props) {
             <span className={cn('text-2xl font-black', currentDigit % 2 === 0 ? 'text-violet-400' : 'text-orange-400')}>
               {currentDigit}
             </span>
-            <span className={cn('text-xs font-bold px-2 py-0.5 rounded-full', currentDigit % 2 === 0 ? 'bg-violet-500/20 text-violet-400' : 'bg-orange-500/20 text-orange-400')}>
+            <span className={cn('text-xs font-bold px-2 py-0.5 rounded-full shadow-sm', currentDigit % 2 === 0 ? 'bg-violet-500/20 text-violet-400' : 'bg-orange-500/20 text-orange-400')}>
               {currentDigit % 2 === 0 ? 'EVEN' : 'ODD'}
             </span>
           </div>
@@ -245,7 +245,7 @@ export function EvenOddTab({ digits, currentDigit, isDark = true }: Props) {
       </div>
 
       {/* ── Digits Line Chart Section ── */}
-      <div className={cn('rounded-2xl border overflow-hidden shadow-sm', panelBorder)} style={{ background: panelBg }}>
+      <div className={cn('rounded-2xl border overflow-hidden shadow-sm glass-panel', panelBorder)}>
         <div className="px-5 pt-4 pb-2 border-b flex items-center justify-between" style={{ borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }}>
           <h3 className={cn('text-sm font-bold flex items-center gap-2', headingColor)}>
             <TrendingUp className="h-4 w-4 text-indigo-400" />
@@ -259,18 +259,18 @@ export function EvenOddTab({ digits, currentDigit, isDark = true }: Props) {
       </div>
 
       {/* ── Recent Digit Sequence Stream ── */}
-      <div className={cn('rounded-2xl p-5 border shadow-sm', panelBorder)} style={{ background: panelBg }}>
+      <div className={cn('rounded-2xl p-5 border shadow-sm glass-panel', panelBorder)}>
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className={cn('text-sm font-bold', headingColor)}>Recent Digit Sequence</h3>
             <p className={cn('text-xs', subTextColor)}>Even numbers in violet, odd numbers in orange (latest on right)</p>
           </div>
-          <div className="inline-flex rounded-lg p-0.5 border" style={{ borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(219,234,254,0.8)' }}>
+          <div className="inline-flex rounded-xl p-1 neu-inset">
             {([15, 30, 50] as const).map((cnt) => (
               <button
                 key={cnt}
                 onClick={() => setSequenceView(cnt)}
-                className={cn('px-2.5 py-0.5 text-xs font-bold rounded-md transition-all', sequenceView === cnt ? pillActive : pillInactive)}
+                className={cn('px-2.5 py-0.5 text-xs font-bold rounded-lg transition-all', sequenceView === cnt ? pillActive : pillInactive)}
               >
                 {cnt}
               </button>
@@ -286,7 +286,7 @@ export function EvenOddTab({ digits, currentDigit, isDark = true }: Props) {
               <div
                 key={i}
                 className={cn(
-                  'flex flex-col items-center justify-center h-12 w-12 rounded-xl text-base font-black transition-all shadow-sm',
+                  'flex flex-col items-center justify-center h-12 w-12 rounded-xl text-base font-black transition-all shadow-sm neu-tile',
                   isEven
                     ? (isDark ? 'bg-violet-950/70 border border-violet-500/40 text-violet-300' : 'bg-violet-100/90 border border-violet-300 text-violet-800')
                     : (isDark ? 'bg-orange-950/70 border border-orange-500/40 text-orange-300' : 'bg-orange-100/90 border border-orange-300 text-orange-800'),
@@ -304,7 +304,7 @@ export function EvenOddTab({ digits, currentDigit, isDark = true }: Props) {
 
       {/* ── Trading Signal Assessment Card ── */}
       <div
-        className={cn('rounded-2xl p-5 border shadow-sm', isDark ? 'border-white/10' : 'border-blue-200/50')}
+        className={cn('rounded-2xl p-5 border shadow-sm glass-panel', isDark ? 'border-white/10' : 'border-blue-200/50')}
         style={{
           background: bias === 'EVEN_BIASED'
             ? (isDark ? '#1e1138' : '#f5f3ff')

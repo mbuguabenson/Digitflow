@@ -53,16 +53,16 @@ export function DiffersTab({ digits, currentDigit, isDark = true }: Props) {
   return (
     <div className="space-y-4">
       {/* ── Header Controls ── */}
-      <div className={cn('rounded-2xl p-5 border shadow-sm', panelBorder)} style={{ background: panelBg }}>
+      <div className={cn('rounded-2xl p-5 border shadow-sm glass-panel', panelBorder)}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/20">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/30 neu-tile">
               <ArrowRightLeft className="h-6 w-6" />
             </div>
             <div>
               <h2 className={cn('text-lg font-bold flex items-center gap-2', headingColor)}>
                 Differs Analysis
-                <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-full border', isDark ? 'border-cyan-400/30 bg-cyan-500/10 text-cyan-400' : 'border-cyan-200 bg-cyan-50 text-cyan-700')}>
+                <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-full border shadow-sm', isDark ? 'border-cyan-400/30 bg-cyan-500/10 text-cyan-400' : 'border-cyan-200 bg-cyan-50 text-cyan-700')}>
                   Expected 90.0% Win Rate
                 </span>
               </h2>
@@ -74,7 +74,7 @@ export function DiffersTab({ digits, currentDigit, isDark = true }: Props) {
 
           <div className="flex items-center gap-2 self-start sm:self-auto">
             <span className={cn('text-xs font-bold uppercase tracking-wider', mutedColor)}>Lookback:</span>
-            <div className="inline-flex rounded-xl p-1 border" style={{ borderColor: isDark ? 'rgba(255,255,254,0.08)' : 'rgba(219,234,254,0.8)', background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(240,249,255,0.6)' }}>
+            <div className="inline-flex rounded-xl p-1 neu-inset">
               {([25, 50, 100, 200] as const).map((n) => (
                 <button
                   key={n}
@@ -92,11 +92,11 @@ export function DiffersTab({ digits, currentDigit, isDark = true }: Props) {
       {/* ── Key Metrics Overview ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Differ Rate Card */}
-        <div className={cn('rounded-xl p-4 border shadow-sm flex flex-col justify-between', cardBorder)} style={{ background: cardBg }}>
+        <div className={cn('rounded-2xl p-4 border shadow-sm flex flex-col justify-between glass-card-elevated', cardBorder)}>
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <p className={cn('text-xs font-medium', subTextColor)}>Observed Differ Rate</p>
-              <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded', d.differPercent >= 90 ? (isDark ? 'bg-cyan-500/20 text-cyan-300' : 'bg-cyan-100 text-cyan-800') : (isDark ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-800'))}>
+              <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm', d.differPercent >= 90 ? (isDark ? 'bg-cyan-500/20 text-cyan-300' : 'bg-cyan-100 text-cyan-800') : (isDark ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-800'))}>
                 {d.differPercent >= 90 ? `+${(d.differPercent - 90).toFixed(1)}%` : `${(d.differPercent - 90).toFixed(1)}%`} vs 90%
               </span>
             </div>
@@ -116,7 +116,7 @@ export function DiffersTab({ digits, currentDigit, isDark = true }: Props) {
         </div>
 
         {/* Total Differs Card */}
-        <div className={cn('rounded-xl p-4 border shadow-sm flex flex-col justify-between', cardBorder)} style={{ background: cardBg }}>
+        <div className={cn('rounded-2xl p-4 border shadow-sm flex flex-col justify-between glass-card-elevated', cardBorder)}>
           <div>
             <div className="flex items-center gap-2 mb-1.5">
               <ShieldCheck className="h-4 w-4 text-cyan-400" />
@@ -132,14 +132,14 @@ export function DiffersTab({ digits, currentDigit, isDark = true }: Props) {
         </div>
 
         {/* Safest Differ Target */}
-        <div className={cn('rounded-xl p-4 border shadow-sm flex flex-col justify-between', cardBorder)} style={{ background: cardBg }}>
+        <div className={cn('rounded-2xl p-4 border shadow-sm flex flex-col justify-between glass-card-elevated', cardBorder)}>
           <div>
             <div className="flex items-center gap-2 mb-1.5">
               <Sparkles className="h-4 w-4 text-emerald-400" />
               <p className={cn('text-xs font-medium', subTextColor)}>Optimal Differ Target</p>
             </div>
             <div className="flex items-center gap-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-black text-xl shadow-md shadow-emerald-500/30">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-black text-xl shadow-md shadow-emerald-500/30 neu-tile">
                 {bestTarget.digit}
               </span>
               <div>
@@ -152,7 +152,7 @@ export function DiffersTab({ digits, currentDigit, isDark = true }: Props) {
         </div>
 
         {/* Last Digit Continuation */}
-        <div className={cn('rounded-xl p-4 border shadow-sm flex flex-col justify-between', cardBorder)} style={{ background: cardBg }}>
+        <div className={cn('rounded-2xl p-4 border shadow-sm flex flex-col justify-between glass-card-elevated', cardBorder)}>
           <div>
             <div className="flex items-center gap-2 mb-1.5">
               <TrendingUp className="h-4 w-4 text-blue-400" />
@@ -169,13 +169,13 @@ export function DiffersTab({ digits, currentDigit, isDark = true }: Props) {
       </div>
 
       {/* ── Per-Digit "Next Differs" Probability Matrix ── */}
-      <div className={cn('rounded-2xl p-5 border shadow-sm', panelBorder)} style={{ background: panelBg }}>
+      <div className={cn('rounded-2xl p-5 border shadow-sm glass-panel', panelBorder)}>
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className={cn('text-sm font-bold', headingColor)}>Per-Digit "Next Differs" Probability Matrix</h3>
             <p className={cn('text-xs', subTextColor)}>When each digit appears, what percentage of the time does the subsequent digit differ?</p>
           </div>
-          <span className={cn('text-xs font-semibold px-2 py-0.5 rounded border', isDark ? 'border-white/10 text-gray-400' : 'border-gray-200 text-gray-600')}>
+          <span className={cn('text-xs font-semibold px-2 py-0.5 rounded border shadow-sm', isDark ? 'border-white/10 text-gray-400' : 'border-gray-200 text-gray-600')}>
             Higher % = Safer Differ Bet
           </span>
         </div>
@@ -192,13 +192,13 @@ export function DiffersTab({ digits, currentDigit, isDark = true }: Props) {
                   'rounded-xl p-2.5 text-center transition-all border shadow-sm',
                   isCurrent
                     ? (isDark ? 'bg-cyan-600/20 border-cyan-500 text-white ring-2 ring-cyan-500/40' : 'bg-cyan-50 border-cyan-400 text-cyan-900 ring-2 ring-cyan-300')
-                    : cardBorder
+                    : 'glass-card-elevated',
+                  cardBorder
                 )}
-                style={{ background: isCurrent ? undefined : cardBg }}
               >
                 <div
                   className={cn(
-                    'mx-auto h-9 w-9 flex items-center justify-center rounded-lg font-black text-base shadow-sm mb-1',
+                    'mx-auto h-9 w-9 flex items-center justify-center rounded-lg font-black text-base shadow-sm mb-1 neu-tile',
                     isCurrent
                       ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white'
                       : is100
@@ -221,7 +221,7 @@ export function DiffersTab({ digits, currentDigit, isDark = true }: Props) {
       </div>
 
       {/* ── Digits Line Chart Section ── */}
-      <div className={cn('rounded-2xl border overflow-hidden shadow-sm', panelBorder)} style={{ background: panelBg }}>
+      <div className={cn('rounded-2xl border overflow-hidden shadow-sm glass-panel', panelBorder)}>
         <div className="px-5 pt-4 pb-2 border-b flex items-center justify-between" style={{ borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }}>
           <h3 className={cn('text-sm font-bold flex items-center gap-2', headingColor)}>
             <BarChart2 className="h-4 w-4 text-cyan-400" />
@@ -235,7 +235,7 @@ export function DiffersTab({ digits, currentDigit, isDark = true }: Props) {
       </div>
 
       {/* ── Recent Transitions Stream ── */}
-      <div className={cn('rounded-2xl p-5 border shadow-sm', panelBorder)} style={{ background: panelBg }}>
+      <div className={cn('rounded-2xl p-5 border shadow-sm glass-panel', panelBorder)}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
             <h3 className={cn('text-sm font-bold', headingColor)}>Recent Digit Transitions</h3>
